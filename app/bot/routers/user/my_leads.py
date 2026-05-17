@@ -1,103 +1,105 @@
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.keyboards.builders import (
-    MenuCallback,
-    UserLeadCallback,
-    main_menu_keyboard,
-    user_lead_detail_keyboard,
-    user_leads_keyboard,
+from app.bot.screens.my_leads import (
+    MY_LEAD_DETAIL_SCREEN_ID,
+    MY_LEADS_SCREEN_ID,
+    MyLeadDetailCallback,
+    MyLeadsCallback,
+    render_my_lead_detail,
+    render_my_leads,
 )
+from app.bot.ui.navigation import get_stack, push
+from app.bot.ui.render import render_screen
 from app.core.config import get_settings
-from app.core.exceptions import AppError
-from app.db.models.user import User
-from app.services.formatting import format_public_lead_line, format_user_lead_detail
+from app.db.repositories.leads import LeadRepository
+from app.services.content import ContentService
 from app.services.leads import LeadService
 
-router = Router(name="user_my_leads")
+router = Router(name="my_leads")
 
 
-@router.callback_query(MenuCallback.filter(F.action == "my_leads"))
-async def my_leads(
+@router.callback_query(MyLeadsCallback.filter())
+async def handle_my_leads(
     callback: CallbackQuery,
-    session: AsyncSession,
-    current_user: User,
+    callback_data: MyLeadsCallback,
     state: FSMContext,
-) -> None:
-    await state.clear()
-    service = LeadService(session, get_settings())
-    leads = await service.list_user_leads(current_user.id)
-    if not leads:
-        await callback.message.edit_text(
-            "У вас пока нет заявок.",
-            reply_markup=main_menu_keyboard(),
-        )
-        await callback.answer()
-        return
-    lines = "\n".join(format_public_lead_line(lead) for lead in leads)
-    await callback.message.edit_text(
-        f"Ваши заявки:\n\n{lines}\n\nВыберите заявку, чтобы открыть карточку.",
-        reply_markup=user_leads_keyboard(leads) or main_menu_keyboard(),
-    )
-    await callback.answer()
-
-
-@router.callback_query(UserLeadCallback.filter(F.action == "detail"))
-async def my_lead_detail(
-    callback: CallbackQuery,
-    callback_data: UserLeadCallback,
+    content: ContentService,
     session: AsyncSession,
-    current_user: User,
+    current_user,
 ) -> None:
-    service = LeadService(session, get_settings())
-    try:
-        lead = await service.get_lead(callback_data.lead_id)
-        if lead.user_id != current_user.id:
+    repo = LeadRepository(session)
+    page_size = content.config.ui.page_size_my_leads
+
+    if callback_data.action == "page":
+        leads = await repo.list_by_user(
+            current_user.id,
+            limit=page_size,
+            offset=(callback_data.page - 1) * page_size,
+        )
+        total = await repo.count_by_user(current_user.id)
+        await push(state, MY_LEADS_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_my_leads(
+            content=content,
+            leads=leads,
+            page=callback_data.page,
+            total=total,
+            stack=stack,
+        )
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
+    elif callback_data.action == "open":
+        lead = await repo.get(callback_data.lead_id)
+        if lead is None or lead.user_id != current_user.id:
             await callback.answer("Заявка не найдена.", show_alert=True)
             return
-    except AppError as exc:
-        await callback.answer(str(exc), show_alert=True)
-        return
-    await callback.message.edit_text(
-        format_user_lead_detail(lead),
-        reply_markup=user_lead_detail_keyboard(lead),
-    )
+        await push(state, MY_LEAD_DETAIL_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_my_lead_detail(content=content, lead=lead, stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
     await callback.answer()
 
 
-@router.callback_query(UserLeadCallback.filter(F.action == "back_to_list"))
-async def back_to_my_leads(
+@router.callback_query(MyLeadDetailCallback.filter())
+async def handle_lead_detail_action(
     callback: CallbackQuery,
+    callback_data: MyLeadDetailCallback,
+    state: FSMContext,
+    content: ContentService,
     session: AsyncSession,
-    current_user: User,
+    current_user,
 ) -> None:
-    service = LeadService(session, get_settings())
-    leads = await service.list_user_leads(current_user.id)
-    lines = "\n".join(format_public_lead_line(lead) for lead in leads)
-    await callback.message.edit_text(
-        f"Ваши заявки:\n\n{lines or 'Заявок нет.'}",
-        reply_markup=user_leads_keyboard(leads) or main_menu_keyboard(),
-    )
-    await callback.answer()
-
-
-@router.callback_query(UserLeadCallback.filter(F.action == "cancel"))
-async def cancel_my_lead(
-    callback: CallbackQuery,
-    callback_data: UserLeadCallback,
-    session: AsyncSession,
-    current_user: User,
-) -> None:
-    service = LeadService(session, get_settings())
-    try:
-        lead = await service.cancel_by_client(lead_id=callback_data.lead_id, actor=current_user)
-    except AppError as exc:
-        await callback.answer(str(exc), show_alert=True)
-        return
-    await callback.message.edit_text(
-        f"Заявка {lead.public_id or lead.id} отменена.\n\n{format_user_lead_detail(lead)}",
-        reply_markup=user_lead_detail_keyboard(lead),
-    )
-    await callback.answer()
+    if callback_data.action == "cancel":
+        service = LeadService(session, get_settings())
+        try:
+            await service.cancel_by_client(lead_id=callback_data.lead_id, actor=current_user)
+            await callback.answer("✅ Заявка отменена.")
+        except Exception as exc:
+            await callback.answer(str(exc), show_alert=True)
+            return
+        # Re-render detail with new status.
+        repo = LeadRepository(session)
+        lead = await repo.get(callback_data.lead_id)
+        if lead is None:
+            await callback.answer()
+            return
+        stack = await get_stack(state)
+        screen = render_my_lead_detail(content=content, lead=lead, stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )

@@ -68,7 +68,7 @@ def test_load_missing_brand_file(tmp_path: Path):
         ContentService.load(profile)
 
 
-def test_load_invalid_yaml(tmp_path: Path, minimal_profile: Path):
+def test_load_invalid_yaml(minimal_profile: Path):
     (minimal_profile / "brand.yaml").write_text(
         "company_name: Acme\n[bad yaml",
         encoding="utf-8",
@@ -77,7 +77,7 @@ def test_load_invalid_yaml(tmp_path: Path, minimal_profile: Path):
         ContentService.load(minimal_profile)
 
 
-def test_load_invalid_schema(tmp_path: Path, minimal_profile: Path):
+def test_load_invalid_schema(minimal_profile: Path):
     (minimal_profile / "brand.yaml").write_text(
         "company_name: Acme\n",
         encoding="utf-8",
@@ -86,3 +86,21 @@ def test_load_invalid_schema(tmp_path: Path, minimal_profile: Path):
 
     with pytest.raises(ValidationError):
         ContentService.load(minimal_profile)
+
+
+def test_load_empty_faq_file_yields_empty_list(minimal_profile: Path):
+    (minimal_profile / "faq.yaml").write_text("", encoding="utf-8")
+    bundle = ContentService.load(minimal_profile)
+    assert bundle.faq == []
+
+
+def test_load_empty_categories_file_yields_empty_list(minimal_profile: Path):
+    (minimal_profile / "categories.yaml").write_text("", encoding="utf-8")
+    bundle = ContentService.load(minimal_profile)
+    assert bundle.categories == []
+
+
+def test_load_empty_config_file_uses_defaults(minimal_profile: Path):
+    (minimal_profile / "config.yaml").write_text("", encoding="utf-8")
+    bundle = ContentService.load(minimal_profile)
+    assert bundle.config.limits.max_files_per_lead == 5  # default

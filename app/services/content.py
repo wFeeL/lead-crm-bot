@@ -43,8 +43,8 @@ class ContentService:
     def config(self) -> AppContentConfig:
         return self._bundle.config
 
-    @classmethod
-    def load(cls, profile_dir: Path) -> ContentBundle:
+    @staticmethod
+    def load(profile_dir: Path) -> ContentBundle:
         """Load all YAML files from a profile directory and validate them."""
         brand_data = _read_yaml(profile_dir / "brand.yaml")
         texts_data = _read_yaml(profile_dir / "texts.yaml")
@@ -55,8 +55,8 @@ class ContentService:
         return ContentBundle(
             brand=BrandConfig.model_validate(brand_data),
             texts=TextsConfig.model_validate(texts_data),
-            faq=[FaqEntry.model_validate(item) for item in faq_data],
-            categories=[CategoryConfig.model_validate(item) for item in categories_data],
+            faq=[FaqEntry.model_validate(item) for item in (faq_data or [])],
+            categories=[CategoryConfig.model_validate(item) for item in (categories_data or [])],
             config=AppContentConfig.model_validate(config_data or {}),
         )
 
@@ -65,4 +65,4 @@ def _read_yaml(path: Path) -> Any:
     if not path.exists():
         raise FileNotFoundError(f"Content file missing: {path}")
     with path.open("r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh) or {}
+        return yaml.safe_load(fh)

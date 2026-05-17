@@ -104,3 +104,44 @@ def test_load_empty_config_file_uses_defaults(minimal_profile: Path):
     (minimal_profile / "config.yaml").write_text("", encoding="utf-8")
     bundle = ContentService.load(minimal_profile)
     assert bundle.config.limits.max_files_per_lead == 5  # default
+
+
+def test_text_simple_lookup(minimal_profile: Path):
+    bundle = ContentService.load(minimal_profile)
+    service = ContentService(bundle)
+    assert service.text("main_menu.title") == "Меню"
+
+
+def test_text_format_substitution(minimal_profile: Path):
+    # Add a parametrized string
+    (minimal_profile / "texts.yaml").write_text(
+        "main_menu:\n"
+        "  title: 'Привет, {name}!'\n"
+        "statuses:\n"
+        "  new: {label: 'Новая', emoji: '🆕'}\n"
+        "priorities:\n"
+        "  normal: {label: 'Обычный', emoji: '⚪'}\n"
+        "close_reasons:\n"
+        "  rejected: ['x']\n"
+        "  done: ['x']\n"
+        "  cancelled: ['x']\n",
+        encoding="utf-8",
+    )
+    bundle = ContentService.load(minimal_profile)
+    service = ContentService(bundle)
+    assert service.text("main_menu.title", name="Иван") == "Привет, Иван!"
+
+
+def test_text_missing_key_raises(minimal_profile: Path):
+    bundle = ContentService.load(minimal_profile)
+    service = ContentService(bundle)
+    with pytest.raises(KeyError, match="missing.key"):
+        service.text("missing.key")
+
+
+def test_text_non_string_value_raises(minimal_profile: Path):
+    bundle = ContentService.load(minimal_profile)
+    service = ContentService(bundle)
+    # 'main_menu' itself is a dict, not a string
+    with pytest.raises(TypeError, match="main_menu"):
+        service.text("main_menu")

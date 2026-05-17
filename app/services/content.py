@@ -43,6 +43,21 @@ class ContentService:
     def config(self) -> AppContentConfig:
         return self._bundle.config
 
+    def text(self, key: str, **kwargs: object) -> str:
+        """Look up a text template by dotted path and apply str.format() with kwargs.
+
+        Falls back to KeyError when the path does not resolve and TypeError when
+        the resolved value is not a string template.
+        """
+        node: object = self._bundle.texts.model_dump()
+        for part in key.split("."):
+            if not isinstance(node, dict) or part not in node:
+                raise KeyError(key)
+            node = node[part]
+        if not isinstance(node, str):
+            raise TypeError(f"text key {key!r} resolves to non-string {type(node).__name__}")
+        return node.format(**kwargs) if kwargs else node
+
     @staticmethod
     def load(profile_dir: Path) -> ContentBundle:
         """Load all YAML files from a profile directory and validate them."""

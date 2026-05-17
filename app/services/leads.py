@@ -89,6 +89,8 @@ class LeadService:
         if lead.status == status:
             return lead
         assert_status_transition(lead.status, status)
+        if status == LeadStatus.REJECTED and not reason:
+            raise ValidationError("rejection requires a reason")
         if reason is not None:
             lead.close_reason = reason
             self.session.add(lead)

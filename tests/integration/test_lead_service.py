@@ -526,3 +526,30 @@ async def test_change_status_persists_reason(session) -> None:
     )
     assert updated.status == LeadStatus.REJECTED
     assert updated.close_reason == "duplicate request"
+
+
+@pytest.mark.asyncio
+async def test_change_status_rejected_requires_reason(session) -> None:
+    # _make_lead uses Settings(admin_ids=[999]) and _make_admin uses telegram_id=999
+    service, _user, lead = await _make_lead(session, telegram_id=509)
+    admin = await _make_admin(session)  # telegram_id=999, matches admin_ids
+    with pytest.raises(ValidationError):
+        await service.change_status(
+            lead_id=lead.id,
+            status=LeadStatus.REJECTED,
+            actor=admin,
+        )
+
+
+@pytest.mark.asyncio
+async def test_change_status_rejected_with_reason_persists(session) -> None:
+    service, _user, lead = await _make_lead(session, telegram_id=510)
+    admin = await _make_admin(session)  # telegram_id=999, matches admin_ids
+    updated = await service.change_status(
+        lead_id=lead.id,
+        status=LeadStatus.REJECTED,
+        actor=admin,
+        reason="client changed mind",
+    )
+    assert updated.status == LeadStatus.REJECTED
+    assert updated.close_reason == "client changed mind"

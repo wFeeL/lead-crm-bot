@@ -1,45 +1,33 @@
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.keyboards.builders import MenuCallback, main_menu_keyboard
-from app.bot.texts.user import FAQ_TEXT, START_TEXT, SUPPORT_TEXT
+from app.bot.routers.user.menu import render_and_show_main_menu
+from app.bot.ui.navigation import clear_root_message_id
+from app.db.repositories.leads import LeadRepository
+from app.services.content import ContentService
 
-router = Router(name="user_start")
+router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def start(message: Message) -> None:
-    await message.answer(START_TEXT, reply_markup=main_menu_keyboard())
-
-
-@router.callback_query(MenuCallback.filter(F.action == "back"))
-async def back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    await callback.message.edit_text(START_TEXT, reply_markup=main_menu_keyboard())
-    await callback.answer()
-
-
-@router.callback_query(MenuCallback.filter(F.action == "support"))
-async def support(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    await callback.message.edit_text(SUPPORT_TEXT, reply_markup=main_menu_keyboard())
-    await callback.answer()
-
-
-@router.callback_query(MenuCallback.filter(F.action == "faq"))
-async def faq(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    await callback.message.edit_text(FAQ_TEXT, reply_markup=main_menu_keyboard())
-    await callback.answer()
-
-
-@router.message()
-async def fallback(message: Message, session: AsyncSession) -> None:
-    _ = session
-    await message.answer(
-        "Не получилось обработать действие. Вернитесь в главное меню.",
-        reply_markup=main_menu_keyboard(),
+async def start(
+    message: Message,
+    state: FSMContext,
+    content: ContentService,
+    session: AsyncSession,
+    current_user,
+) -> None:
+    """Fresh /start always creates a new root message."""
+    await clear_root_message_id(state)
+    repo = LeadRepository(session)
+    leads_count = await repo.count_by_user(current_user.id)
+    await render_and_show_main_menu(
+        bot=message.bot,
+        chat_id=message.chat.id,
+        state=state,
+        content=content,
+        leads_count=leads_count,
     )

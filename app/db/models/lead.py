@@ -34,7 +34,9 @@ class Lead(TimestampMixin, Base):
     contact_phone: Mapped[str | None] = mapped_column(String(64))
     contact_username: Mapped[str | None] = mapped_column(String(255))
     preferred_contact_time: Mapped[str | None] = mapped_column(String(255))
-    assigned_admin_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    assigned_admin_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
     source: Mapped[str] = mapped_column(String(64), default="telegram", nullable=False)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     close_reason: Mapped[str | None] = mapped_column(String(500))
@@ -91,7 +93,9 @@ class LeadComment(CreatedAtMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lead_id: Mapped[int] = mapped_column(ForeignKey("leads.id"), nullable=False, index=True)
-    admin_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    admin_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     is_internal: Mapped[bool] = mapped_column(default=True, nullable=False)
     lead = relationship("Lead", back_populates="comments")

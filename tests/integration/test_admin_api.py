@@ -15,7 +15,8 @@ from app.services.forms import ensure_seed_data
 from app.services.leads import LeadService
 from httpx import ASGITransport, AsyncClient
 
-_BUNDLE = ContentService.load(Path("app/bot/content/default"))
+_CONTENT_DIR = Path(__file__).resolve().parents[2] / "app" / "bot" / "content" / "default"
+_BUNDLE = ContentService.load(_CONTENT_DIR)
 
 
 @pytest.mark.asyncio

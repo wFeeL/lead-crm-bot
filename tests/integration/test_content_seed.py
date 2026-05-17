@@ -6,10 +6,12 @@ from app.services.content import ContentService
 from app.services.forms import ensure_seed_data
 from sqlalchemy.ext.asyncio import AsyncSession
 
+_CONTENT_DIR = Path(__file__).resolve().parents[2] / "app" / "bot" / "content" / "default"
+
 
 @pytest.mark.asyncio
 async def test_ensure_seed_data_from_default_profile(session: AsyncSession):
-    bundle = ContentService.load(Path("app/bot/content/default"))
+    bundle = ContentService.load(_CONTENT_DIR)
     await ensure_seed_data(session, bundle)
     await session.commit()
 
@@ -29,7 +31,7 @@ async def test_ensure_seed_data_from_default_profile(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_ensure_seed_data_is_idempotent(session: AsyncSession):
-    bundle = ContentService.load(Path("app/bot/content/default"))
+    bundle = ContentService.load(_CONTENT_DIR)
     await ensure_seed_data(session, bundle)
     await session.commit()
     await ensure_seed_data(session, bundle)

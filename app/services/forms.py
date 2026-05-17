@@ -114,6 +114,7 @@ async def ensure_seed_data(session: AsyncSession, content: ContentBundle) -> Non
                 "text": q.text,
                 "type": q.type,
                 "required": q.required,
+                "options": q.options,
             }
             for q in category_cfg.questions
         ]

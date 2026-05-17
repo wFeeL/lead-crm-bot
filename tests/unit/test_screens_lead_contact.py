@@ -15,7 +15,9 @@ def _content():
 
 
 def test_lead_contact_prompt_text():
-    screen = render_lead_contact_prompt(content=_content(), stack=["main_menu", "lead_contact_prompt"])
+    screen = render_lead_contact_prompt(
+        content=_content(), stack=["main_menu", "lead_contact_prompt"]
+    )
     assert screen.screen_id == LEAD_CONTACT_PROMPT_SCREEN_ID
     assert "Контакт" in screen.text
 

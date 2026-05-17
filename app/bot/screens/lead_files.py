@@ -32,25 +32,31 @@ def render_lead_upload_files(
     text = "\n".join(lines)
 
     extra: list[list[InlineKeyboardButton]] = []
-    extra.append([
-        InlineKeyboardButton(
-            text="➡ Продолжить",
-            callback_data=LeadFilesCallback(action="continue").pack(),
-        )
-    ])
-    if files:
-        extra.append([
+    extra.append(
+        [
             InlineKeyboardButton(
-                text="🗑 Удалить последний",
-                callback_data=LeadFilesCallback(action="delete_last").pack(),
+                text="➡ Продолжить",
+                callback_data=LeadFilesCallback(action="continue").pack(),
             )
-        ])
-    extra.append([
-        InlineKeyboardButton(
-            text="⬅ К ответам",
-            callback_data=LeadFilesCallback(action="back_to_questions").pack(),
+        ]
+    )
+    if files:
+        extra.append(
+            [
+                InlineKeyboardButton(
+                    text="🗑 Удалить последний",
+                    callback_data=LeadFilesCallback(action="delete_last").pack(),
+                )
+            ]
         )
-    ])
+    extra.append(
+        [
+            InlineKeyboardButton(
+                text="⬅ К ответам",
+                callback_data=LeadFilesCallback(action="back_to_questions").pack(),
+            )
+        ]
+    )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=nav_footer(stack=stack, extra=extra))
     return Screen(screen_id=LEAD_UPLOAD_FILES_SCREEN_ID, text=text, keyboard=keyboard)

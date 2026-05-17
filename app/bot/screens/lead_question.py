@@ -39,14 +39,16 @@ def render_lead_question(
     extra: list[list[InlineKeyboardButton]] = []
     if question["type"] == QuestionType.CHOICE and question.get("options"):
         for i, option in enumerate(question["options"]):
-            extra.append([
-                InlineKeyboardButton(
-                    text=option,
-                    callback_data=LeadQuestionChoiceCallback(
-                        question_id=question["id"], option_index=i
-                    ).pack(),
-                )
-            ])
+            extra.append(
+                [
+                    InlineKeyboardButton(
+                        text=option,
+                        callback_data=LeadQuestionChoiceCallback(
+                            question_id=question["id"], option_index=i
+                        ).pack(),
+                    )
+                ]
+            )
     action_row: list[InlineKeyboardButton] = []
     if not question["required"]:
         action_row.append(

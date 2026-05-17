@@ -251,12 +251,19 @@ async def test_cancel_mid_flow_clears_state(content, state, session, current_use
 
 
 # ---------------------------------------------------------------------------
-# Test 6: edit_answers from confirm pops last answer
+# Test 6: edit_answers from confirm opens the edit-answers list, keeping all answers
 # ---------------------------------------------------------------------------
 
 
-async def test_edit_answers_from_confirm_pops_last_answer(content, state, session, current_user):
-    """From confirming, edit_answers goes back to answering_questions with last answer popped."""
+async def test_edit_answers_from_confirm_opens_list_and_keeps_answers(
+    content, state, session, current_user
+):
+    """From confirming, edit_answers must open the edit-answers list screen.
+
+    All answers stay intact — user picks which one to change. State stays in
+    ``confirming`` until the user actively picks a row to edit; nav stack pushes
+    ``lead_edit_answers`` on top of ``lead_confirm``.
+    """
     questions = [
         {
             "id": 1,
@@ -316,7 +323,8 @@ async def test_edit_answers_from_confirm_pops_last_answer(content, state, sessio
         content=content,
     )
 
-    assert await state.get_state() == LeadFormState.answering_questions.state
+    # All answers preserved, no pop.
     data = await state.get_data()
-    assert len(data["answers"]) == 2
-    assert data["question_index"] == 2
+    assert len(data["answers"]) == 3
+    # Edit-answers screen pushed onto the stack.
+    assert data["nav_stack"][-1] == "lead_edit_answers"

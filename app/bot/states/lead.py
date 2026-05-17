@@ -7,6 +7,7 @@ class LeadFormState(StatesGroup):
     uploading_files = State()
     entering_contact = State()
     confirming = State()
+    editing_one_answer = State()
 
 
 # AdminCommentState removed — admin flow states now live in app/bot/states/admin_flow.py

@@ -48,6 +48,10 @@ from app.bot.screens.lead_contact import (
     make_contact_reply_keyboard,
     render_lead_contact_prompt,
 )
+from app.bot.screens.lead_edit_answers import (
+    LEAD_EDIT_ANSWERS_SCREEN_ID,
+    render_lead_edit_answers,
+)
 from app.bot.screens.lead_files import (
     LEAD_UPLOAD_FILES_SCREEN_ID,
     render_lead_upload_files,
@@ -364,6 +368,17 @@ async def _back_lead_contact_prompt(
     )
 
 
+async def _back_lead_edit_answers(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    """Return to the edit-answers list while keeping all in-progress edits."""
+    await state.set_state(LeadFormState.editing_one_answer)
+    data = await state.get_data()
+    stack = await get_stack(state)
+    screen = render_lead_edit_answers(content=content, draft=data, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
 async def _back_lead_confirm(
     *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
 ) -> None:
@@ -391,3 +406,4 @@ def register_all() -> None:
     register_back(LEAD_UPLOAD_FILES_SCREEN_ID, _back_lead_upload_files)
     register_back(LEAD_CONTACT_PROMPT_SCREEN_ID, _back_lead_contact_prompt)
     register_back(LEAD_CONFIRM_SCREEN_ID, _back_lead_confirm)
+    register_back(LEAD_EDIT_ANSWERS_SCREEN_ID, _back_lead_edit_answers)

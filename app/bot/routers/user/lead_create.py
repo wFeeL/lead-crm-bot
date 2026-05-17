@@ -23,6 +23,11 @@ from app.bot.screens.lead_contact import (
     render_lead_contact_prompt,
 )
 from app.bot.screens.lead_done import render_lead_done
+from app.bot.screens.lead_edit_answers import (
+    LEAD_EDIT_ANSWERS_SCREEN_ID,
+    LeadEditAnswerCallback,
+    render_lead_edit_answers,
+)
 from app.bot.screens.lead_files import (
     LEAD_UPLOAD_FILES_SCREEN_ID,
     LeadFilesCallback,
@@ -544,19 +549,17 @@ async def on_confirm_action(
     if callback_data.action == "submit":
         await _submit_lead(callback, state, session, current_user, content)
     elif callback_data.action == "edit_answers":
-        # Go back to last question.
+        # Open the edit-answers list: user picks WHICH answer to change, the
+        # rest are preserved.
+        await push(state, LEAD_EDIT_ANSWERS_SCREEN_ID)
         data = await state.get_data()
-        answers = data.get("answers", [])
-        if answers:
-            answers.pop()
-            await state.update_data(answers=answers, question_index=len(answers))
-        await state.set_state(LeadFormState.answering_questions)
-        await pop(state)  # leave confirm
-        await _render_current_question(
-            callback.bot,
-            callback.message.chat.id,
-            state,
-            content,
+        stack = await get_stack(state)
+        screen = render_lead_edit_answers(content=content, draft=data, stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
         )
         await callback.answer()
     elif callback_data.action == "add_file":
@@ -623,6 +626,198 @@ async def _submit_lead(callback, state, session, current_user, content):
     await render_screen(
         bot=callback.bot, chat_id=callback.message.chat.id, state=state, screen=screen
     )
+
+
+# ============= Step 5b: edit individual answers from confirm =============
+
+
+async def _render_edit_answers_list(
+    *,
+    bot,
+    chat_id: int,
+    state: FSMContext,
+    content: ContentService,
+) -> None:
+    data = await state.get_data()
+    stack = await get_stack(state)
+    screen = render_lead_edit_answers(content=content, draft=data, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+@router.callback_query(LeadEditAnswerCallback.filter())
+async def on_edit_answers_action(
+    callback: CallbackQuery,
+    callback_data: LeadEditAnswerCallback,
+    state: FSMContext,
+    content: ContentService,
+) -> None:
+    """Handle taps on the edit-answers list: pick one answer or confirm done."""
+    data = await state.get_data()
+    answers = list(data.get("answers") or [])
+    questions = list(data.get("questions") or [])
+
+    if callback_data.action == "done":
+        await pop(state)  # leave edit_answers screen, back to confirm
+        await state.set_state(LeadFormState.confirming)
+        stack = await get_stack(state)
+        data = await state.get_data()
+        screen = render_lead_confirm(content=content, draft=data, stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
+        await callback.answer()
+        return
+
+    # action == "pick"
+    index = callback_data.index
+    if index < 0 or index >= len(answers) or index >= len(questions):
+        await callback.answer("Вопрос не найден.", show_alert=True)
+        return
+    # Reuse the existing question renderer but stay on edit_answers in the stack
+    # (we don't push lead_question — the user returns here after answering).
+    await state.update_data(editing_index=index, question_index=index)
+    await state.set_state(LeadFormState.editing_one_answer)
+    stack = await get_stack(state)
+    screen = render_lead_question(
+        content=content,
+        question=questions[index],
+        index=index,
+        total=len(questions),
+        stack=stack,
+    )
+    await render_screen(
+        bot=callback.bot,
+        chat_id=callback.message.chat.id,
+        state=state,
+        screen=screen,
+    )
+    await callback.answer()
+
+
+async def _persist_edited_answer(
+    *,
+    bot,
+    chat_id: int,
+    state: FSMContext,
+    content: ContentService,
+    value_text: str,
+) -> None:
+    """Overwrite the i-th answer in place, then re-show the edit-answers list."""
+    data = await state.get_data()
+    answers = list(data.get("answers") or [])
+    questions = list(data.get("questions") or [])
+    index = int(data.get("editing_index", -1))
+    if index < 0 or index >= len(answers) or index >= len(questions):
+        # Defensive: state desynced; bounce to confirm.
+        await state.set_state(LeadFormState.confirming)
+        return
+    question = questions[index]
+    answers[index] = {
+        "question_id": question["id"],
+        "key": question["key"],
+        "question_text": question["text"],
+        "value_text": value_text,
+    }
+    await state.update_data(answers=answers, editing_index=None)
+    await state.set_state(LeadFormState.editing_one_answer)
+    # Return user to the edit-answers list so they can pick another to edit
+    # or press ✅ Готово.
+    await _render_edit_answers_list(bot=bot, chat_id=chat_id, state=state, content=content)
+
+
+@router.message(StateFilter(LeadFormState.editing_one_answer), F.text)
+async def on_edit_text_answer(
+    message: Message,
+    state: FSMContext,
+    content: ContentService,
+) -> None:
+    data = await state.get_data()
+    questions = list(data.get("questions") or [])
+    index = int(data.get("editing_index", -1))
+    if index < 0 or index >= len(questions):
+        await message.answer("Ошибка состояния. Откройте «Изменить ответы» заново.")
+        return
+    question = questions[index]
+    raw = (message.text or "").strip()
+    if question["required"] and not raw:
+        await message.answer("Ответ обязателен. Напишите текстом.")
+        return
+    try:
+        value_text = _normalize_answer_value(question, raw) if raw else ""
+    except ValidationError:
+        await message.answer(_validation_hint(question))
+        return
+    await _persist_edited_answer(
+        bot=message.bot,
+        chat_id=message.chat.id,
+        state=state,
+        content=content,
+        value_text=value_text,
+    )
+
+
+@router.callback_query(
+    StateFilter(LeadFormState.editing_one_answer),
+    LeadQuestionChoiceCallback.filter(),
+)
+async def on_edit_choice_answer(
+    callback: CallbackQuery,
+    callback_data: LeadQuestionChoiceCallback,
+    state: FSMContext,
+    content: ContentService,
+) -> None:
+    data = await state.get_data()
+    questions = list(data.get("questions") or [])
+    index = int(data.get("editing_index", -1))
+    if index < 0 or index >= len(questions):
+        await callback.answer("Ошибка состояния.", show_alert=True)
+        return
+    options = questions[index].get("options") or []
+    try:
+        value_text = options[callback_data.option_index]
+    except IndexError:
+        await callback.answer("Вариант не найден.", show_alert=True)
+        return
+    await _persist_edited_answer(
+        bot=callback.bot,
+        chat_id=callback.message.chat.id,
+        state=state,
+        content=content,
+        value_text=value_text,
+    )
+    await callback.answer()
+
+
+@router.callback_query(
+    StateFilter(LeadFormState.editing_one_answer),
+    LeadQuestionSkipCallback.filter(),
+)
+async def on_edit_skip(
+    callback: CallbackQuery,
+    callback_data: LeadQuestionSkipCallback,
+    state: FSMContext,
+    content: ContentService,
+) -> None:
+    data = await state.get_data()
+    questions = list(data.get("questions") or [])
+    index = int(data.get("editing_index", -1))
+    if index < 0 or index >= len(questions):
+        await callback.answer("Ошибка состояния.", show_alert=True)
+        return
+    if questions[index]["required"]:
+        await callback.answer("Этот вопрос обязателен.", show_alert=True)
+        return
+    await _persist_edited_answer(
+        bot=callback.bot,
+        chat_id=callback.message.chat.id,
+        state=state,
+        content=content,
+        value_text="",
+    )
+    await callback.answer()
 
 
 # ============= Fallback handlers (per-state escape from stuck) =============

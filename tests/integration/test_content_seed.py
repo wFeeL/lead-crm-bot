@@ -75,3 +75,51 @@ def test_fastapi_lifespan_surfaces_content_error(tmp_path, monkeypatch):
         # Restore for other tests
         monkeypatch.delenv("CONTENT_PROFILE", raising=False)
         get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_ensure_seed_data_sets_is_internal_from_yaml(session: AsyncSession, tmp_path: Path):
+    """seed honors CategoryConfig.internal flag."""
+    import shutil
+
+    profile = tmp_path / "internal_profile"
+    profile.mkdir()
+    # Copy default brand/texts/faq/config to satisfy ContentService.load();
+    # override only categories.yaml
+    for fname in ("brand.yaml", "texts.yaml", "faq.yaml", "config.yaml"):
+        shutil.copy(_CONTENT_DIR / fname, profile / fname)
+    (profile / "categories.yaml").write_text(
+        "- slug: public_cat\n"
+        "  title: Public\n"
+        "  description: Visible to clients\n"
+        "  questions:\n"
+        "    - {key: q1, text: 'Q1', type: text, required: true}\n"
+        "- slug: secret_cat\n"
+        "  title: Secret\n"
+        "  description: Hidden\n"
+        "  internal: true\n"
+        "  questions:\n"
+        "    - {key: q1, text: 'Q1', type: text, required: true}\n",
+        encoding="utf-8",
+    )
+    bundle = ContentService.load(profile)
+    await ensure_seed_data(session, bundle)
+    await session.commit()
+
+    repo = FormRepository(session)
+    public = await repo.get_category_by_slug("public_cat")
+    secret = await repo.get_category_by_slug("secret_cat")
+    assert public is not None and public.is_internal is False
+    assert secret is not None and secret.is_internal is True
+
+    # list_categories without include_internal hides secret_cat
+    visible = await repo.list_categories()
+    visible_slugs = {c.slug for c in visible}
+    assert "public_cat" in visible_slugs
+    assert "secret_cat" not in visible_slugs
+
+    # list_categories with include_internal=True shows both
+    all_cats = await repo.list_categories(include_internal=True)
+    all_slugs = {c.slug for c in all_cats}
+    assert "public_cat" in all_slugs
+    assert "secret_cat" in all_slugs

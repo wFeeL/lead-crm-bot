@@ -100,6 +100,7 @@ async def ensure_seed_data(session: AsyncSession, content: ContentBundle) -> Non
                 title=category_cfg.title,
                 description=category_cfg.description,
                 sort_order=index,
+                is_internal=category_cfg.internal,
             )
         form = await repository.get_active_form(category.id)
         if form is None:

@@ -16,8 +16,12 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _dialect_name() -> str:
+    return op.get_bind().dialect.name
+
+
 def upgrade() -> None:
-    # --- Indexes ---
+    # --- Indexes (portable across dialects) ---
     op.create_index(
         "ix_leads_assigned_admin_id", "leads", ["assigned_admin_id"], unique=False
     )
@@ -40,25 +44,61 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # --- Cascade rules (batch for SQLite compat) ---
-
-    # lead_comments.admin_id: make nullable + ON DELETE SET NULL
-    with op.batch_alter_table("lead_comments", recreate="always") as batch_op:
-        batch_op.drop_constraint("fk_lead_comments_admin_id_users", type_="foreignkey")
-        batch_op.alter_column("admin_id", existing_type=sa.Integer(), nullable=True)
-        batch_op.create_foreign_key(
+    # --- Cascade rules ---
+    # SQLite cannot ALTER constraints in place; needs batch_alter_table (recreates table).
+    # PostgreSQL can ALTER natively, and batch_alter_table fails because pk_leads is
+    # referenced by FKs from lead_answers/lead_files/lead_events/lead_comments.
+    if _dialect_name() == "sqlite":
+        with op.batch_alter_table("lead_comments", recreate="always") as batch_op:
+            batch_op.drop_constraint(
+                "fk_lead_comments_admin_id_users", type_="foreignkey"
+            )
+            batch_op.alter_column(
+                "admin_id", existing_type=sa.Integer(), nullable=True
+            )
+            batch_op.create_foreign_key(
+                "fk_lead_comments_admin_id_users",
+                "users",
+                ["admin_id"],
+                ["id"],
+                ondelete="SET NULL",
+            )
+        with op.batch_alter_table("leads", recreate="always") as batch_op:
+            batch_op.drop_constraint(
+                "fk_leads_assigned_admin_id_users", type_="foreignkey"
+            )
+            batch_op.create_foreign_key(
+                "fk_leads_assigned_admin_id_users",
+                "users",
+                ["assigned_admin_id"],
+                ["id"],
+                ondelete="SET NULL",
+            )
+    else:
+        # Native ALTER (PostgreSQL etc.) — touches only the FK in question.
+        op.drop_constraint(
+            "fk_lead_comments_admin_id_users", "lead_comments", type_="foreignkey"
+        )
+        op.alter_column(
+            "lead_comments",
+            "admin_id",
+            existing_type=sa.Integer(),
+            nullable=True,
+        )
+        op.create_foreign_key(
             "fk_lead_comments_admin_id_users",
+            "lead_comments",
             "users",
             ["admin_id"],
             ["id"],
             ondelete="SET NULL",
         )
-
-    # leads.assigned_admin_id: ON DELETE SET NULL (already nullable)
-    with op.batch_alter_table("leads", recreate="always") as batch_op:
-        batch_op.drop_constraint("fk_leads_assigned_admin_id_users", type_="foreignkey")
-        batch_op.create_foreign_key(
+        op.drop_constraint(
+            "fk_leads_assigned_admin_id_users", "leads", type_="foreignkey"
+        )
+        op.create_foreign_key(
             "fk_leads_assigned_admin_id_users",
+            "leads",
             "users",
             ["assigned_admin_id"],
             ["id"],
@@ -67,27 +107,58 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Revert cascade rules
-    with op.batch_alter_table("leads", recreate="always") as batch_op:
-        batch_op.drop_constraint("fk_leads_assigned_admin_id_users", type_="foreignkey")
-        batch_op.create_foreign_key(
+    if _dialect_name() == "sqlite":
+        with op.batch_alter_table("leads", recreate="always") as batch_op:
+            batch_op.drop_constraint(
+                "fk_leads_assigned_admin_id_users", type_="foreignkey"
+            )
+            batch_op.create_foreign_key(
+                "fk_leads_assigned_admin_id_users",
+                "users",
+                ["assigned_admin_id"],
+                ["id"],
+            )
+        with op.batch_alter_table("lead_comments", recreate="always") as batch_op:
+            batch_op.drop_constraint(
+                "fk_lead_comments_admin_id_users", type_="foreignkey"
+            )
+            batch_op.alter_column(
+                "admin_id", existing_type=sa.Integer(), nullable=False
+            )
+            batch_op.create_foreign_key(
+                "fk_lead_comments_admin_id_users",
+                "users",
+                ["admin_id"],
+                ["id"],
+            )
+    else:
+        op.drop_constraint(
+            "fk_leads_assigned_admin_id_users", "leads", type_="foreignkey"
+        )
+        op.create_foreign_key(
             "fk_leads_assigned_admin_id_users",
+            "leads",
             "users",
             ["assigned_admin_id"],
             ["id"],
         )
-
-    with op.batch_alter_table("lead_comments", recreate="always") as batch_op:
-        batch_op.drop_constraint("fk_lead_comments_admin_id_users", type_="foreignkey")
-        batch_op.alter_column("admin_id", existing_type=sa.Integer(), nullable=False)
-        batch_op.create_foreign_key(
+        op.drop_constraint(
+            "fk_lead_comments_admin_id_users", "lead_comments", type_="foreignkey"
+        )
+        op.alter_column(
+            "lead_comments",
+            "admin_id",
+            existing_type=sa.Integer(),
+            nullable=False,
+        )
+        op.create_foreign_key(
             "fk_lead_comments_admin_id_users",
+            "lead_comments",
             "users",
             ["admin_id"],
             ["id"],
         )
 
-    # Drop indexes
     op.drop_index("ix_lead_events_lead_created_at", table_name="lead_events")
     op.drop_index("ix_leads_status_created_at", table_name="leads")
     op.drop_index("ix_leads_priority_created_at", table_name="leads")

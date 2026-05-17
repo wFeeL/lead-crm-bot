@@ -71,9 +71,7 @@ def render_my_leads(
                 callback_data=MyLeadsCallback(action="page", page=page - 1).pack(),
             )
         )
-    pagination_row.append(
-        InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop")
-    )
+    pagination_row.append(InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop"))
     if page < total_pages:
         pagination_row.append(
             InlineKeyboardButton(

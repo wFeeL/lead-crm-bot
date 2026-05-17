@@ -29,10 +29,30 @@ def render_main_menu(*, content: ContentService, leads_count: int = 0) -> Screen
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📝 Оставить заявку", callback_data=MainMenuCallback(action="create_lead").pack())],
-            [InlineKeyboardButton(text=my_leads_label, callback_data=MainMenuCallback(action="my_leads").pack())],
-            [InlineKeyboardButton(text="💬 Связаться с менеджером", callback_data=MainMenuCallback(action="support").pack())],
-            [InlineKeyboardButton(text="❓ FAQ", callback_data=MainMenuCallback(action="faq").pack())],
+            [
+                InlineKeyboardButton(
+                    text="📝 Оставить заявку",
+                    callback_data=MainMenuCallback(action="create_lead").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=my_leads_label,
+                    callback_data=MainMenuCallback(action="my_leads").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💬 Связаться с менеджером",
+                    callback_data=MainMenuCallback(action="support").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❓ FAQ",
+                    callback_data=MainMenuCallback(action="faq").pack(),
+                )
+            ],
         ]
     )
 

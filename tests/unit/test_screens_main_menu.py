@@ -3,7 +3,6 @@ from pathlib import Path
 from app.bot.screens.main_menu import MAIN_MENU_SCREEN_ID, MainMenuCallback, render_main_menu
 from app.services.content import ContentService
 
-
 _CONTENT_DIR = Path(__file__).resolve().parents[2] / "app" / "bot" / "content" / "default"
 
 

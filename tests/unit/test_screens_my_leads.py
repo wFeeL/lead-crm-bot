@@ -48,8 +48,10 @@ def test_render_my_leads_lists_leads_with_buttons():
         content=_content(), leads=leads, page=1, total=3, stack=["main_menu", "my_leads"]
     )
     lead_buttons = [
-        btn for row in screen.keyboard.inline_keyboard
-        for btn in row if "my_leads:" in btn.callback_data
+        btn
+        for row in screen.keyboard.inline_keyboard
+        for btn in row
+        if "my_leads:" in btn.callback_data
     ]
     assert len(lead_buttons) == 3
 

@@ -51,4 +51,3 @@ def test_admin_menu_has_navigation_actions() -> None:
 
     assert "📋 Все заявки" in button_texts
     assert "📤 CSV" in button_texts
-

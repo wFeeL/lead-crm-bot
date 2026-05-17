@@ -11,4 +11,3 @@ class LeadFormState(StatesGroup):
 
 class AdminCommentState(StatesGroup):
     waiting_for_comment = State()
-

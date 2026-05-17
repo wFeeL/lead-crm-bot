@@ -37,21 +37,11 @@ async def _require_admin(message_or_callback, current_user: User, settings: Sett
     return False
 
 
-@router.message(Command("admin"))
-async def admin_panel(message: Message, current_user: User) -> None:
-    settings = get_settings()
-    if not await _require_admin(message, current_user, settings):
-        return
-    await message.answer(
-        "Админ-панель\n\n"
-        "Команды:\n"
-        "/new — новые заявки\n"
-        "/leads — все заявки\n"
-        "/leads_user <telegram_id|@username> — фильтр по пользователю\n"
-        "/leads_date <YYYY-MM-DD> — фильтр по дате\n"
-        "/export — CSV-выгрузка",
-        reply_markup=admin_menu_keyboard(),
-    )
+# NOTE: /admin command moved to app.bot.routers.admin.menu (Screen-based flow).
+# This handler is intentionally commented out to avoid double registration.
+# @router.message(Command("admin"))
+# async def admin_panel(message: Message, current_user: User) -> None:
+#     ...  (legacy handler removed in Step 5)
 
 
 async def _send_lead_list(
@@ -362,11 +352,15 @@ async def change_status(
     if not await _require_admin(callback, current_user, settings):
         return
     service = LeadService(session, settings)
+    # Legacy UI has no reason prompt — pass a fallback reason for REJECTED
+    # to satisfy the service-layer validation added in Task 5.5.
+    legacy_reason = "—" if callback_data.status == "rejected" else None
     try:
         lead = await service.change_status(
             lead_id=callback_data.lead_id,
             status=callback_data.status,
             actor=current_user,
+            reason=legacy_reason,
         )
     except AppError as exc:
         await callback.answer(str(exc), show_alert=True)

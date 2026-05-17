@@ -5,7 +5,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage, StorageKey
 from aiogram.types import Message
-
 from app.bot.middlewares.escape import EscapeMiddleware
 
 
@@ -75,3 +74,44 @@ async def test_escape_passthrough_for_non_message_event(state: FSMContext):
     cb = MagicMock()  # Not isinstance Message.
     await EscapeMiddleware()(handler, cb, {"state": state})
     handler.assert_awaited_once()
+
+
+def test_dispatcher_includes_nav_router_before_feature_routers():
+    """Verify create_dispatcher wires nav_router first by inspecting source structure.
+
+    Calling create_dispatcher() twice in the same process causes RuntimeError because
+    aiogram router objects (module-level singletons in feature modules) can only be
+    attached to one Dispatcher. We therefore verify the ordering structurally instead
+    of calling create_dispatcher a second time.
+    """
+    import ast
+    import inspect
+
+    import app.bot.create as create_module
+
+    source = inspect.getsource(create_module.create_dispatcher)
+    tree = ast.parse(source)
+
+    # Collect all dispatcher.include_router(...) call argument names in order.
+    included: list[str] = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "include_router"
+            and node.args
+        ):
+            arg = node.args[0]
+            # e.g. include_router(create_nav_router()) or include_router(nav_router)
+            if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                included.append(arg.func.id)
+            elif isinstance(arg, ast.Name):
+                included.append(arg.id)
+            elif isinstance(arg, ast.Attribute):
+                included.append(arg.attr)
+
+    assert included, "No include_router calls found in create_dispatcher"
+    # nav factory/router must appear first
+    assert included[0] in ("create_nav_router", "nav_router"), (
+        f"Expected nav router first, got: {included}"
+    )

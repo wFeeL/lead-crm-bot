@@ -8,12 +8,12 @@ from app.core.constants import QuestionType
 class BrandConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    company_name: str
-    manager_username: str
-    manager_phone: str
-    working_hours: str
-    welcome_intro: str
-    support_intro: str
+    company_name: str = Field(min_length=1)
+    manager_username: str = Field(min_length=1)
+    manager_phone: str = Field(min_length=1)
+    working_hours: str = Field(min_length=1)
+    welcome_intro: str = Field(min_length=1)
+    support_intro: str = Field(min_length=1)
     eta_response_hours: int = Field(ge=0)
 
 
@@ -33,6 +33,16 @@ class QuestionConfig(BaseModel):
     required: bool = False
     options: list[str] | None = None
 
+    @model_validator(mode="after")
+    def _choice_requires_options(self) -> Self:
+        if self.type in (QuestionType.CHOICE, QuestionType.MULTI_CHOICE):
+            if not self.options:
+                raise ValueError(
+                    f"question {self.key!r}: type {self.type.value!r} requires"
+                    " a non-empty 'options' list"
+                )
+        return self
+
 
 class CategoryConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -41,7 +51,7 @@ class CategoryConfig(BaseModel):
     title: str
     description: str
     internal: bool = False
-    questions: list[QuestionConfig]
+    questions: list[QuestionConfig] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _unique_question_keys(self) -> Self:
@@ -109,7 +119,13 @@ class AppContentConfig(BaseModel):
 
 
 class ContentBundle(BaseModel):
-    """Loaded content profile. Used as a value object after ContentService.load()."""
+    """Loaded content profile.
+
+    Used as a value object after ContentService.load(). Note: ``frozen=True`` here
+    prevents field *reassignment* but does NOT prevent in-place mutation of contained
+    lists (e.g. ``bundle.faq.append(...)`` succeeds). Treat contents as read-only by
+    convention.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

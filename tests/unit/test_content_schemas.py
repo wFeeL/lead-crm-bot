@@ -203,3 +203,82 @@ def test_content_bundle_assembles():
     )
     assert bundle.brand.company_name == "Acme"
     assert len(bundle.faq) == 1
+
+
+# Fix 1: cross-field validator for choice questions
+
+
+def test_question_config_choice_requires_options():
+    with pytest.raises(ValidationError):
+        QuestionConfig.model_validate({"key": "opt", "text": "Pick one", "type": "choice"})
+
+
+def test_question_config_choice_requires_non_empty_options():
+    with pytest.raises(ValidationError):
+        QuestionConfig.model_validate(
+            {"key": "opt", "text": "Pick one", "type": "choice", "options": []}
+        )
+
+
+def test_question_config_choice_with_options_ok():
+    q = QuestionConfig.model_validate(
+        {"key": "opt", "text": "Pick one", "type": "choice", "options": ["A", "B"]}
+    )
+    assert q.options == ["A", "B"]
+
+
+def test_question_config_multi_choice_requires_options():
+    with pytest.raises(ValidationError):
+        QuestionConfig.model_validate({"key": "opts", "text": "Pick many", "type": "multi_choice"})
+
+
+# Fix 3: min_length=1 on required BrandConfig strings
+
+
+def test_brand_config_rejects_empty_company_name():
+    with pytest.raises(ValidationError):
+        BrandConfig.model_validate(
+            {
+                "company_name": "",
+                "manager_username": "@a",
+                "manager_phone": "+7",
+                "working_hours": "x",
+                "welcome_intro": "x",
+                "support_intro": "x",
+                "eta_response_hours": 24,
+            }
+        )
+
+
+# Fix 4: min_length=1 on CategoryConfig.questions
+
+
+def test_category_config_rejects_empty_questions():
+    with pytest.raises(ValidationError):
+        CategoryConfig.model_validate(
+            {
+                "slug": "empty_cat",
+                "title": "Empty",
+                "description": "No questions",
+                "questions": [],
+            }
+        )
+
+
+# Fix 5: extra="forbid" rejection test
+
+
+def test_brand_config_rejects_extra_field():
+    with pytest.raises(ValidationError):
+        BrandConfig.model_validate(
+            {
+                "company_name": "Acme",
+                "manager_username": "@a",
+                "manager_phone": "+7",
+                "working_hours": "x",
+                "welcome_intro": "x",
+                "support_intro": "x",
+                "eta_response_hours": 24,
+                "unknown_field": "boom",
+            }
+        )

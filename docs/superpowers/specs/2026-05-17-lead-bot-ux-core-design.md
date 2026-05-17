@@ -611,7 +611,7 @@ app/services/content.py
 - `support`-категория помечается `is_internal=true` (seed).
 - Применяется до Шага 3 (фильтрация в `LEAD_CATEGORY`).
 
-### `0004_add_contacted_status_and_close_reason_priority.py`
+### `0004_status_close_priority.py`
 
 Основная миграция этапа. Объединена в одну, чтобы статусные изменения катились атомарно:
 
@@ -714,7 +714,7 @@ app/services/content.py
 Три миграции по порядку зависимостей (см. секцию «Миграции БД»):
 
 - `0003_add_category_is_internal.py` — до Шага 3.
-- `0004_add_contacted_status_and_close_reason_priority.py` — до Шага 5.
+- `0004_status_close_priority.py` — до Шага 5.
 - `0005_indexes_and_cascades.py` — финальная.
 
 Фактический порядок в writing-plans: Шаг 0 → 0003-миграция → Шаги 1–4 → 0004-миграция → Шаг 5 → Шаг 6 → 0005-миграция → Шаг 8.

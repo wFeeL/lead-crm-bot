@@ -1,6 +1,6 @@
 """add contacted status, close_reason, priority
 
-Revision ID: 0004_add_contacted_status_and_close_reason_priority
+Revision ID: 0004_status_close_priority
 Revises: 0003_add_category_is_internal
 Create Date: 2026-05-17
 """
@@ -10,7 +10,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0004_add_contacted_status_and_close_reason_priority"
+revision: str = "0004_status_close_priority"
 down_revision: str | Sequence[str] | None = "0003_add_category_is_internal"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

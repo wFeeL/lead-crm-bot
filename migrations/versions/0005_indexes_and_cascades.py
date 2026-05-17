@@ -1,7 +1,7 @@
 """indexes and cascade rules
 
 Revision ID: 0005_indexes_and_cascades
-Revises: 0004_add_contacted_status_and_close_reason_priority
+Revises: 0004_status_close_priority
 Create Date: 2026-05-17
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0005_indexes_and_cascades"
-down_revision: str | Sequence[str] | None = "0004_add_contacted_status_and_close_reason_priority"
+down_revision: str | Sequence[str] | None = "0004_status_close_priority"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

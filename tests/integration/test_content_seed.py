@@ -41,3 +41,12 @@ async def test_ensure_seed_data_is_idempotent(session: AsyncSession):
     categories = await repo.list_categories()
     # Still exactly 4 — no duplicates
     assert len(categories) == 4
+
+
+def test_fastapi_lifespan_loads_content():
+    from app.main import create_app
+    from fastapi.testclient import TestClient
+
+    app = create_app()
+    with TestClient(app):  # triggers lifespan startup
+        assert app.state.content.brand.company_name == "LeadBot Demo"

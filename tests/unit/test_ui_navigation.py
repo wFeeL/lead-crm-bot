@@ -2,6 +2,7 @@ import pytest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage, StorageKey
 from app.bot.ui.navigation import (
+    clear_root_message_id,
     get_root_message_id,
     get_stack,
     go_home,
@@ -62,3 +63,15 @@ async def test_root_message_id_setter_and_getter(state: FSMContext):
     assert await get_root_message_id(state) is None
     await set_root_message_id(state, 12345)
     assert await get_root_message_id(state) == 12345
+
+
+async def test_clear_root_message_id(state: FSMContext):
+    await set_root_message_id(state, 999)
+    assert await get_root_message_id(state) == 999
+    await clear_root_message_id(state)
+    assert await get_root_message_id(state) is None
+
+
+async def test_clear_root_message_id_when_not_set_is_noop(state: FSMContext):
+    await clear_root_message_id(state)  # Should not raise.
+    assert await get_root_message_id(state) is None

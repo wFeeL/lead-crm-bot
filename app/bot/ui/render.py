@@ -20,11 +20,13 @@ async def render_screen(
     """Render the screen on the user's root message, or send a new one.
 
     Returns the resulting message_id (root). Updates FSM data root_message_id.
+    If screen.next_state is set, transitions the FSM to that state after render.
 
     Reply-keyboard is NOT handled here — screens that need one are responsible
     for sending a separate prompt message after this call.
     """
     root_id = await get_root_message_id(state)
+    result_id: int
     if root_id is not None:
         try:
             await bot.edit_message_text(
@@ -33,14 +35,26 @@ async def render_screen(
                 text=screen.text,
                 reply_markup=screen.keyboard,
             )
-            return root_id
+            result_id = root_id
         except TelegramBadRequest as exc:
             logger.info("root_message_edit_failed_falling_back_to_send: %s", exc)
+            sent = await bot.send_message(
+                chat_id=chat_id,
+                text=screen.text,
+                reply_markup=screen.keyboard,
+            )
+            await set_root_message_id(state, sent.message_id)
+            result_id = sent.message_id
+    else:
+        sent = await bot.send_message(
+            chat_id=chat_id,
+            text=screen.text,
+            reply_markup=screen.keyboard,
+        )
+        await set_root_message_id(state, sent.message_id)
+        result_id = sent.message_id
 
-    sent = await bot.send_message(
-        chat_id=chat_id,
-        text=screen.text,
-        reply_markup=screen.keyboard,
-    )
-    await set_root_message_id(state, sent.message_id)
-    return sent.message_id
+    if screen.next_state is not None:
+        await state.set_state(screen.next_state)
+
+    return result_id

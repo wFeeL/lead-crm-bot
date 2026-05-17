@@ -81,3 +81,39 @@ async def test_render_falls_back_to_send_when_edit_fails(state: FSMContext):
     bot.send_message.assert_awaited_once()
     data = await state.get_data()
     assert data["root_message_id"] == 200
+
+
+async def test_render_applies_next_state(state: FSMContext):
+    from aiogram.fsm.state import State, StatesGroup
+
+    class _S(StatesGroup):
+        target = State()
+
+    bot = MagicMock()
+    sent = MagicMock(message_id=42)
+    bot.send_message = AsyncMock(return_value=sent)
+    bot.edit_message_text = AsyncMock()
+
+    screen = Screen(
+        screen_id="x",
+        text="y",
+        keyboard=InlineKeyboardMarkup(inline_keyboard=[]),
+        next_state=_S.target,
+    )
+    await render_screen(bot=bot, chat_id=42, state=state, screen=screen)
+    assert await state.get_state() == _S.target.state
+
+
+async def test_render_no_next_state_keeps_state(state: FSMContext):
+    bot = MagicMock()
+    sent = MagicMock(message_id=42)
+    bot.send_message = AsyncMock(return_value=sent)
+    bot.edit_message_text = AsyncMock()
+
+    screen = Screen(
+        screen_id="x",
+        text="y",
+        keyboard=InlineKeyboardMarkup(inline_keyboard=[]),
+    )
+    await render_screen(bot=bot, chat_id=42, state=state, screen=screen)
+    assert await state.get_state() is None

@@ -49,3 +49,15 @@ async def get_root_message_id(state: FSMContext) -> int | None:
 
 async def set_root_message_id(state: FSMContext, message_id: int) -> None:
     await state.update_data({ROOT_MESSAGE_ID_KEY: int(message_id)})
+
+
+async def clear_root_message_id(state: FSMContext) -> None:
+    """Drop the root_message_id from FSM data.
+
+    Call this when a fresh root message will be sent (e.g. after /start clears
+    state and the start handler sends a brand-new MAIN_MENU message).
+    """
+    data = await state.get_data()
+    if ROOT_MESSAGE_ID_KEY in data:
+        del data[ROOT_MESSAGE_ID_KEY]
+        await state.set_data(data)

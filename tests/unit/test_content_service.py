@@ -63,3 +63,30 @@ def test_load_minimal_profile(minimal_profile: Path):
     assert bundle.categories[0].slug == "telegram_bot"
     assert bundle.config.limits.max_files_per_lead == 7
     assert bundle.config.ui.page_size_my_leads == 10
+
+
+def test_load_missing_brand_file(tmp_path: Path):
+    profile = tmp_path / "broken"
+    profile.mkdir()
+    with pytest.raises(FileNotFoundError, match="brand.yaml"):
+        ContentService.load(profile)
+
+
+def test_load_invalid_yaml(tmp_path: Path, minimal_profile: Path):
+    (minimal_profile / "brand.yaml").write_text(
+        "company_name: Acme\n[bad yaml",
+        encoding="utf-8",
+    )
+    with pytest.raises(yaml.YAMLError):
+        ContentService.load(minimal_profile)
+
+
+def test_load_invalid_schema(tmp_path: Path, minimal_profile: Path):
+    (minimal_profile / "brand.yaml").write_text(
+        "company_name: Acme\n",
+        encoding="utf-8",
+    )
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        ContentService.load(minimal_profile)

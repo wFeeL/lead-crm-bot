@@ -5,6 +5,7 @@ import pytest
 from app.core.config import Settings
 from app.core.constants import LeadStatus
 from app.db.repositories.forms import FormRepository
+from app.db.repositories.leads import LeadRepository
 from app.db.repositories.users import UserRepository
 from app.schemas.lead import LeadAnswerInput, LeadCreateInput
 from app.services.content import ContentService
@@ -324,3 +325,65 @@ async def test_comments_can_be_public_or_internal(session) -> None:
         ("internal", True),
         ("public", False),
     ]
+
+
+@pytest.mark.asyncio
+async def test_lead_repository_count_by_user(session) -> None:
+    """LeadRepository.count_by_user returns number of leads owned by user."""
+    await ensure_seed_data(session, _BUNDLE)
+    category = await FormRepository(session).get_category_by_slug("other")
+    user_repo = UserRepository(session)
+    user_a = await user_repo.upsert_telegram_user(
+        telegram_id=401,
+        username="user_a",
+        first_name="UserA",
+        last_name=None,
+    )
+    user_b = await user_repo.upsert_telegram_user(
+        telegram_id=402,
+        username="user_b",
+        first_name="UserB",
+        last_name=None,
+    )
+    service = LeadService(session, Settings(admin_ids=[999]))
+    repo = LeadRepository(session)
+
+    # No leads yet.
+    assert await repo.count_by_user(user_a.id) == 0
+
+    await service.create_lead(
+        LeadCreateInput(
+            user_id=user_a.id,
+            category_id=category.id,
+            title=category.title,
+            description="Task A1",
+            contact_name="UserA",
+            contact_phone="@user_a",
+            contact_username="user_a",
+        )
+    )
+    await service.create_lead(
+        LeadCreateInput(
+            user_id=user_a.id,
+            category_id=category.id,
+            title=category.title,
+            description="Task A2",
+            contact_name="UserA",
+            contact_phone="@user_a",
+            contact_username="user_a",
+        )
+    )
+    await service.create_lead(
+        LeadCreateInput(
+            user_id=user_b.id,
+            category_id=category.id,
+            title=category.title,
+            description="Task B1",
+            contact_name="UserB",
+            contact_phone="@user_b",
+            contact_username="user_b",
+        )
+    )
+
+    assert await repo.count_by_user(user_a.id) == 2
+    assert await repo.count_by_user(user_b.id) == 1

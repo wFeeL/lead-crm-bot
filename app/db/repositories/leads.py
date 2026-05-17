@@ -99,6 +99,16 @@ class LeadRepository:
         )
         return list(result.scalars().all())
 
+    async def count_by_user(self, user_id: int) -> int:
+        from sqlalchemy import func, select
+
+        result = await self.session.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(Lead.user_id == user_id)
+        )
+        return int(result.scalar_one())
+
     async def count_recent_new_by_user(self, user_id: int, *, since: datetime) -> int:
         result = await self.session.execute(
             select(func.count(Lead.id)).where(

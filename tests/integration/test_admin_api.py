@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from app.api.routers.admin import router as admin_router
@@ -9,14 +10,17 @@ from app.db.repositories.forms import FormRepository
 from app.db.repositories.users import UserRepository
 from app.main import app
 from app.schemas.lead import LeadCreateInput
+from app.services.content import ContentService
 from app.services.forms import ensure_seed_data
 from app.services.leads import LeadService
 from httpx import ASGITransport, AsyncClient
 
+_BUNDLE = ContentService.load(Path("app/bot/content/default"))
+
 
 @pytest.mark.asyncio
 async def test_export_csv_route_is_not_shadowed_by_lead_detail_route(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("consultation")
     user = await UserRepository(session).upsert_telegram_user(
         telegram_id=201,
@@ -59,7 +63,7 @@ async def test_export_csv_route_is_not_shadowed_by_lead_detail_route(session) ->
 
 @pytest.mark.asyncio
 async def test_admin_leads_route_filters_by_user_and_date(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("consultation")
     user_repo = UserRepository(session)
     alpha = await user_repo.upsert_telegram_user(
@@ -113,9 +117,7 @@ async def test_admin_leads_route_filters_by_user_and_date(session) -> None:
             )
             by_future = await client.get(
                 "/admin/leads",
-                params={
-                    "date_from": (datetime.now(UTC) + timedelta(days=1)).date().isoformat()
-                },
+                params={"date_from": (datetime.now(UTC) + timedelta(days=1)).date().isoformat()},
             )
     finally:
         app.dependency_overrides.clear()

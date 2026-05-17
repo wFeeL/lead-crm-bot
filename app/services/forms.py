@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import QuestionType
 from app.db.repositories.forms import FormRepository
+from app.schemas.content import ContentBundle
 
 LEAD_FORM_DEFINITIONS: list[dict] = [
     {
@@ -89,23 +90,31 @@ LEAD_FORM_DEFINITIONS: list[dict] = [
 ]
 
 
-async def ensure_seed_data(session: AsyncSession) -> None:
+async def ensure_seed_data(session: AsyncSession, content: ContentBundle) -> None:
     repository = FormRepository(session)
-    for index, definition in enumerate(LEAD_FORM_DEFINITIONS):
-        category = await repository.get_category_by_slug(definition["slug"])
+    for index, category_cfg in enumerate(content.categories):
+        category = await repository.get_category_by_slug(category_cfg.slug)
         if category is None:
             category = await repository.create_category(
-                slug=definition["slug"],
-                title=definition["title"],
-                description=definition["description"],
+                slug=category_cfg.slug,
+                title=category_cfg.title,
+                description=category_cfg.description,
                 sort_order=index,
             )
         form = await repository.get_active_form(category.id)
         if form is None:
             form = await repository.create_form(
                 category_id=category.id,
-                title=definition["title"],
-                description=definition["description"],
+                title=category_cfg.title,
+                description=category_cfg.description,
             )
-        await repository.replace_questions(form, definition["questions"])
-
+        questions_payload = [
+            {
+                "key": q.key,
+                "text": q.text,
+                "type": q.type,
+                "required": q.required,
+            }
+            for q in category_cfg.questions
+        ]
+        await repository.replace_questions(form, questions_payload)

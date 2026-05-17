@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from app.core.config import Settings
@@ -6,13 +7,16 @@ from app.core.constants import LeadStatus
 from app.db.repositories.forms import FormRepository
 from app.db.repositories.users import UserRepository
 from app.schemas.lead import LeadAnswerInput, LeadCreateInput
+from app.services.content import ContentService
 from app.services.forms import ensure_seed_data
 from app.services.leads import LeadService
+
+_BUNDLE = ContentService.load(Path("app/bot/content/default"))
 
 
 @pytest.mark.asyncio
 async def test_seed_and_create_lead(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("telegram_bot")
     form = await FormRepository(session).get_active_form(category.id)
     user = await UserRepository(session).upsert_telegram_user(
@@ -49,7 +53,7 @@ async def test_seed_and_create_lead(session) -> None:
 
 @pytest.mark.asyncio
 async def test_create_lead_is_idempotent_by_submission_key(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("telegram_bot")
     user = await UserRepository(session).upsert_telegram_user(
         telegram_id=103,
@@ -79,7 +83,7 @@ async def test_create_lead_is_idempotent_by_submission_key(session) -> None:
 
 @pytest.mark.asyncio
 async def test_client_can_cancel_new_lead(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("other")
     user = await UserRepository(session).upsert_telegram_user(
         telegram_id=101,
@@ -107,7 +111,7 @@ async def test_client_can_cancel_new_lead(session) -> None:
 
 @pytest.mark.asyncio
 async def test_client_cancel_is_safe_to_repeat(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("other")
     user = await UserRepository(session).upsert_telegram_user(
         telegram_id=104,
@@ -137,7 +141,7 @@ async def test_client_cancel_is_safe_to_repeat(session) -> None:
 
 @pytest.mark.asyncio
 async def test_admin_status_change_and_csv_export(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("consultation")
     user_repo = UserRepository(session)
     client = await user_repo.upsert_telegram_user(
@@ -181,7 +185,7 @@ async def test_admin_status_change_and_csv_export(session) -> None:
 
 @pytest.mark.asyncio
 async def test_admin_take_lead_assigns_and_moves_to_in_progress_idempotently(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("consultation")
     user_repo = UserRepository(session)
     client = await user_repo.upsert_telegram_user(
@@ -226,7 +230,7 @@ async def test_admin_take_lead_assigns_and_moves_to_in_progress_idempotently(ses
 
 @pytest.mark.asyncio
 async def test_admin_list_filters_by_user_and_date(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("other")
     user_repo = UserRepository(session)
     client_a = await user_repo.upsert_telegram_user(
@@ -278,7 +282,7 @@ async def test_admin_list_filters_by_user_and_date(session) -> None:
 
 @pytest.mark.asyncio
 async def test_comments_can_be_public_or_internal(session) -> None:
-    await ensure_seed_data(session)
+    await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("other")
     user_repo = UserRepository(session)
     client = await user_repo.upsert_telegram_user(

@@ -15,6 +15,7 @@ statuses:
   done:        { label: "Завершена",    emoji: "✅" }
   rejected:    { label: "Отклонена",    emoji: "❌" }
   cancelled:   { label: "Отменена",     emoji: "🚫" }
+  deleted:     { label: "Удалена",      emoji: "🗑" }
 
 priorities:
   low:    { label: "Низкий",   emoji: "🔵" }

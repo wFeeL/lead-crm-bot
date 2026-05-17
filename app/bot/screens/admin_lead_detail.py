@@ -27,6 +27,7 @@ class AdminDetailCallback(CallbackData, prefix="adm_det"):
         "comment_reply",
         "assign",
         "assign_me",
+        "delete",
     ]
     lead_id: int
     value: str = ""  # For set_status / set_priority
@@ -209,6 +210,18 @@ def render_admin_lead_detail(
         )
     )
     extra.append(assignment_row)
+
+    # --- Danger zone: soft-delete on its own row, visually separated by the
+    # 🗑 prefix from regular actions. Telegram has no real button colors, so
+    # the emoji is the signal that this is a destructive action.
+    extra.append(
+        [
+            InlineKeyboardButton(
+                text="🗑 Удалить заявку",
+                callback_data=AdminDetailCallback(action="delete", lead_id=lead.id).pack(),
+            )
+        ]
+    )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=nav_footer(stack=stack, extra=extra))
     return Screen(screen_id=ADMIN_LEAD_DETAIL_SCREEN_ID, text=text, keyboard=keyboard)

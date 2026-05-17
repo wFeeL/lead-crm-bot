@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.constants import LeadEventType, LeadStatus
+from app.core.constants import HIDDEN_STATUSES, LeadEventType, LeadStatus
 from app.db.models.category import LeadCategory
 from app.db.models.lead import Lead, LeadAnswer, LeadComment, LeadEvent, LeadFile
 from app.db.models.user import User
@@ -17,6 +17,11 @@ from app.schemas.lead import LeadCreateInput
 class LeadRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    @staticmethod
+    def _hidden_status_values() -> tuple[str, ...]:
+        """Statuses that should never appear in any list query (soft-deleted)."""
+        return tuple(str(s) for s in HIDDEN_STATUSES)
 
     def _lead_options(self) -> tuple:
         return (
@@ -58,6 +63,7 @@ class LeadRepository:
         stmt: Select = (
             select(Lead)
             .options(*self._lead_options())
+            .where(Lead.status.not_in(self._hidden_status_values()))
             .order_by(Lead.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -93,7 +99,10 @@ class LeadRepository:
         result = await self.session.execute(
             select(Lead)
             .options(*self._lead_options())
-            .where(Lead.user_id == user_id)
+            .where(
+                Lead.user_id == user_id,
+                Lead.status.not_in(self._hidden_status_values()),
+            )
             .order_by(Lead.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -104,7 +113,12 @@ class LeadRepository:
         from sqlalchemy import func, select
 
         result = await self.session.execute(
-            select(func.count()).select_from(Lead).where(Lead.user_id == user_id)
+            select(func.count())
+            .select_from(Lead)
+            .where(
+                Lead.user_id == user_id,
+                Lead.status.not_in(self._hidden_status_values()),
+            )
         )
         return int(result.scalar_one())
 
@@ -233,6 +247,28 @@ class LeadRepository:
             raise RuntimeError("lead disappeared after assignment")
         return refreshed
 
+    async def soft_delete(
+        self,
+        *,
+        lead: Lead,
+        actor_user_id: int | None,
+    ) -> Lead:
+        """Mark a lead as deleted. Rows remain for history; queries filter it out."""
+        old_status = lead.status
+        lead.status = LeadStatus.DELETED
+        lead.closed_at = datetime.now(UTC)
+        self.session.add(
+            LeadEvent(
+                lead_id=lead.id,
+                actor_user_id=actor_user_id,
+                event_type=LeadEventType.LEAD_DELETED,
+                old_value=old_status,
+                new_value=LeadStatus.DELETED,
+            )
+        )
+        await self.session.flush()
+        return lead
+
     async def add_comment(
         self,
         *,
@@ -284,22 +320,25 @@ class LeadRepository:
         return row[0] if row else None
 
     async def status_counts(self) -> dict[str, int]:
-        """Total count per status across ALL leads (not date-filtered)."""
+        """Total count per status across all non-hidden leads."""
         from sqlalchemy import func, select
 
         result = await self.session.execute(
-            select(Lead.status, func.count(Lead.id)).group_by(Lead.status)
+            select(Lead.status, func.count(Lead.id))
+            .where(Lead.status.not_in(self._hidden_status_values()))
+            .group_by(Lead.status)
         )
         return {row[0]: row[1] for row in result.all()}
 
     async def hot_count(self) -> int:
-        """Count of non-terminal leads with priority high or urgent."""
+        """Count of non-terminal, non-deleted leads with priority high or urgent."""
         from sqlalchemy import func, select
 
         result = await self.session.execute(
             select(func.count(Lead.id)).where(
                 Lead.priority.in_(("high", "urgent")),
                 Lead.status.not_in(("done", "rejected", "cancelled")),
+                Lead.status.not_in(self._hidden_status_values()),
             )
         )
         return int(result.scalar_one())
@@ -324,7 +363,11 @@ class LeadRepository:
             (Lead.priority == "low", 1),
             else_=0,
         )
-        stmt = select(Lead).options(*self._lead_options())
+        stmt = (
+            select(Lead)
+            .options(*self._lead_options())
+            .where(Lead.status.not_in(self._hidden_status_values()))
+        )
         if status is not None:
             stmt = stmt.where(Lead.status == status)
         if priority is not None:
@@ -349,7 +392,7 @@ class LeadRepository:
     ) -> int:
         from sqlalchemy import func, select
 
-        stmt = select(func.count(Lead.id))
+        stmt = select(func.count(Lead.id)).where(Lead.status.not_in(self._hidden_status_values()))
         if status is not None:
             stmt = stmt.where(Lead.status == status)
         if priority is not None:

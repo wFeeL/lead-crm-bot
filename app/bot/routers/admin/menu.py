@@ -19,6 +19,11 @@ from app.bot.screens.admin_comment_prompt import (
     ADMIN_COMMENT_PROMPT_SCREEN_ID,
     render_admin_comment_prompt,
 )
+from app.bot.screens.admin_lead_delete_confirm import (
+    ADMIN_LEAD_DELETE_CONFIRM_SCREEN_ID,
+    AdminLeadDeleteCallback,
+    render_admin_lead_delete_confirm,
+)
 from app.bot.screens.admin_lead_detail import (
     ADMIN_LEAD_DETAIL_SCREEN_ID,
     AdminDetailCallback,
@@ -376,6 +381,27 @@ async def on_admin_detail_action(
         await callback.answer("Назначено на вас.")
         return
 
+    if callback_data.action == "delete":
+        lead = await repo.get(callback_data.lead_id)
+        if lead is None:
+            await callback.answer("Не найдено.", show_alert=True)
+            return
+        await push(state, ADMIN_LEAD_DELETE_CONFIRM_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_admin_lead_delete_confirm(
+            public_id=str(lead.public_id),
+            lead_id=lead.id,
+            stack=stack,
+        )
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
+        await callback.answer()
+        return
+
     if callback_data.action == "assign":
         user_repo = UserRepository(session)
         admins = await user_repo.list_admins()
@@ -654,3 +680,87 @@ async def on_admin_comment_text(
     )
     await message.answer("✅ Сохранено.")
 
+
+
+@router.callback_query(AdminLeadDeleteCallback.filter())
+async def on_admin_lead_delete(
+    callback: CallbackQuery,
+    callback_data: AdminLeadDeleteCallback,
+    state: FSMContext,
+    content: ContentService,
+    session: AsyncSession,
+    current_user,
+) -> None:
+    settings = get_settings()
+    if not _is_admin_user(current_user, settings):
+        await callback.answer("Недостаточно прав.", show_alert=True)
+        return
+
+    if callback_data.action == "cancel":
+        # Pop confirmation, re-render the underlying detail screen.
+        await pop(state)
+        repo = LeadRepository(session)
+        lead = await repo.get(callback_data.lead_id)
+        if lead is not None:
+            stack = await get_stack(state)
+            screen = render_admin_lead_detail(content=content, lead=lead, stack=stack)
+            await render_screen(
+                bot=callback.bot,
+                chat_id=callback.message.chat.id,
+                state=state,
+                screen=screen,
+            )
+        await callback.answer()
+        return
+
+    # action == "confirm" — perform soft-delete and bounce admin back to the list.
+    service = LeadService(session, settings)
+    try:
+        await service.delete_lead(lead_id=callback_data.lead_id, actor=current_user)
+    except AppError as exc:
+        await callback.answer(str(exc), show_alert=True)
+        return
+
+    # Drop both the confirmation and the detail from the nav stack — the lead
+    # is gone, returning to it makes no sense. Then re-render the list filter
+    # the admin came from.
+    await pop(state)  # leave delete_confirm
+    await pop(state)  # leave admin_lead_detail
+    # Clear the cached current_lead_id so back-renderers don't re-fetch a deleted lead.
+    data = await state.get_data()
+    if "admin_current_lead_id" in data:
+        await state.update_data(admin_current_lead_id=None)
+
+    data = await state.get_data()
+    af = data.get("admin_filter") or {}
+    page_size = content.config.ui.page_size_admin
+    repo = LeadRepository(session)
+    leads = await repo.list_by_filter(
+        status=af.get("status"),
+        hot=bool(af.get("hot", False)),
+        limit=page_size,
+        offset=0,
+    )
+    total = await repo.count_by_filter(
+        status=af.get("status"),
+        hot=bool(af.get("hot", False)),
+    )
+    stack = await get_stack(state)
+    from app.bot.screens.admin_lead_list import render_admin_lead_list
+
+    screen = render_admin_lead_list(
+        content=content,
+        leads=leads,
+        page=1,
+        total=total,
+        page_size=page_size,
+        filter_label=af.get("label", "📋 Заявки"),
+        stack=stack,
+    )
+    await render_screen(
+        bot=callback.bot,
+        chat_id=callback.message.chat.id,
+        state=state,
+        screen=screen,
+    )
+    await callback.answer("🗑 Заявка удалена.")

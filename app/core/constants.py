@@ -16,6 +16,7 @@ class LeadStatus(StrEnum):
     DONE = "done"
     REJECTED = "rejected"
     CANCELLED = "cancelled"
+    DELETED = "deleted"
 
 
 class LeadPriority(StrEnum):
@@ -51,6 +52,7 @@ class LeadEventType(StrEnum):
     COMMENT_ADDED = "comment_added"
     FILE_UPLOADED = "file_uploaded"
     CLIENT_CANCELLED = "client_cancelled"
+    LEAD_DELETED = "lead_deleted"
 
 
 ALLOWED_STATUS_TRANSITIONS: dict[LeadStatus, set[LeadStatus]] = {
@@ -84,6 +86,7 @@ ALLOWED_STATUS_TRANSITIONS: dict[LeadStatus, set[LeadStatus]] = {
     LeadStatus.DONE: set(),
     LeadStatus.REJECTED: set(),
     LeadStatus.CANCELLED: set(),
+    LeadStatus.DELETED: set(),
 }
 
 
@@ -95,6 +98,7 @@ STATUS_TITLES: dict[str, str] = {
     LeadStatus.DONE: "Завершена",
     LeadStatus.REJECTED: "Отклонена",
     LeadStatus.CANCELLED: "Отменена",
+    LeadStatus.DELETED: "Удалена",
 }
 
 
@@ -106,8 +110,10 @@ STATUS_EMOJIS: dict[str, str] = {
     LeadStatus.DONE: "✅",
     LeadStatus.REJECTED: "❌",
     LeadStatus.CANCELLED: "🚫",
+    LeadStatus.DELETED: "🗑",
 }
 
 
 ACTIVE_STATUSES = {LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.IN_PROGRESS, LeadStatus.WAITING}
 CLOSED_STATUSES = {LeadStatus.DONE, LeadStatus.REJECTED, LeadStatus.CANCELLED}
+HIDDEN_STATUSES = {LeadStatus.DELETED}

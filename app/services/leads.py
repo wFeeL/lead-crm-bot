@@ -165,6 +165,15 @@ class LeadService:
             "source": "repeat",
         }
 
+    async def delete_lead(self, *, lead_id: int, actor: User) -> Lead:
+        """Soft-delete a lead. Admin-only. Lead remains in DB; lists exclude it."""
+        if not is_admin(actor.telegram_id, self.settings):
+            raise PermissionDeniedError("admin privileges required")
+        lead = await self.get_lead(lead_id)
+        if lead.status == LeadStatus.DELETED:
+            return lead
+        return await self.repository.soft_delete(lead=lead, actor_user_id=actor.id)
+
     async def cancel_by_client(
         self,
         *,

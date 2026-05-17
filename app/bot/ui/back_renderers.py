@@ -21,6 +21,10 @@ from app.bot.screens.admin_assign_list import (
     ADMIN_ASSIGN_LIST_SCREEN_ID,
     render_admin_assign_list,
 )
+from app.bot.screens.admin_lead_delete_confirm import (
+    ADMIN_LEAD_DELETE_CONFIRM_SCREEN_ID,
+    render_admin_lead_delete_confirm,
+)
 from app.bot.screens.admin_lead_detail import (
     ADMIN_LEAD_DETAIL_SCREEN_ID,
     render_admin_lead_detail,
@@ -211,6 +215,40 @@ async def _back_admin_lead_detail(
     await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
 
 
+async def _back_admin_lead_delete_confirm(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    lead_id = data.get("admin_current_lead_id")
+    if lead_id is None:
+        await _back_admin_lead_list(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    repo = LeadRepository(session)
+    lead = await repo.get(int(lead_id))
+    if lead is None:
+        await _back_admin_lead_list(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    stack = await get_stack(state)
+    screen = render_admin_lead_delete_confirm(
+        public_id=str(lead.public_id), lead_id=lead.id, stack=stack
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
 async def _back_admin_assign_list(
     *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
 ) -> None:
@@ -347,6 +385,7 @@ def register_all() -> None:
     register_back(ADMIN_LEAD_LIST_SCREEN_ID, _back_admin_lead_list)
     register_back(ADMIN_LEAD_DETAIL_SCREEN_ID, _back_admin_lead_detail)
     register_back(ADMIN_ASSIGN_LIST_SCREEN_ID, _back_admin_assign_list)
+    register_back(ADMIN_LEAD_DELETE_CONFIRM_SCREEN_ID, _back_admin_lead_delete_confirm)
     register_back(LEAD_CATEGORY_SCREEN_ID, _back_lead_category)
     register_back(LEAD_QUESTION_SCREEN_ID, _back_lead_question)
     register_back(LEAD_UPLOAD_FILES_SCREEN_ID, _back_lead_upload_files)

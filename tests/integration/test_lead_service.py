@@ -553,3 +553,63 @@ async def test_change_status_rejected_with_reason_persists(session) -> None:
     )
     assert updated.status == LeadStatus.REJECTED
     assert updated.close_reason == "client changed mind"
+
+
+@pytest.mark.asyncio
+async def test_delete_lead_admin_only(session) -> None:
+    service, user, lead = await _make_lead(session, telegram_id=520)
+    with pytest.raises(PermissionDeniedError):
+        await service.delete_lead(lead_id=lead.id, actor=user)
+
+
+@pytest.mark.asyncio
+async def test_delete_lead_marks_status_deleted_and_records_event(session) -> None:
+    from app.db.models.lead import LeadEvent
+    from sqlalchemy import select
+
+    service, _user, lead = await _make_lead(session, telegram_id=521)
+    admin = await _make_admin(session)
+    deleted = await service.delete_lead(lead_id=lead.id, actor=admin)
+    assert deleted.status == LeadStatus.DELETED
+    assert deleted.closed_at is not None
+    # Event was recorded — query directly so we don't rely on lazy-loading
+    # under an AsyncSession.
+    events = (
+        (await session.execute(select(LeadEvent).where(LeadEvent.lead_id == lead.id)))
+        .scalars()
+        .all()
+    )
+    event_types = {e.event_type for e in events}
+    assert "lead_deleted" in event_types
+
+
+@pytest.mark.asyncio
+async def test_deleted_lead_is_hidden_from_all_lists(session) -> None:
+    """After soft-delete, the lead must disappear from admin and client listings."""
+    service, user, lead = await _make_lead(session, telegram_id=522)
+    admin = await _make_admin(session)
+    await service.delete_lead(lead_id=lead.id, actor=admin)
+
+    repo = LeadRepository(session)
+
+    # Client side.
+    user_leads = await repo.list_by_user(user.id)
+    assert lead.id not in {item.id for item in user_leads}
+    assert await repo.count_by_user(user.id) == 0
+
+    # Admin side.
+    admin_leads = await repo.list_by_filter()
+    assert lead.id not in {item.id for item in admin_leads}
+    assert await repo.count_by_filter() == 0
+    counts = await repo.status_counts()
+    assert "deleted" not in counts
+
+
+@pytest.mark.asyncio
+async def test_delete_lead_idempotent(session) -> None:
+    service, _user, lead = await _make_lead(session, telegram_id=523)
+    admin = await _make_admin(session)
+    first = await service.delete_lead(lead_id=lead.id, actor=admin)
+    second = await service.delete_lead(lead_id=lead.id, actor=admin)
+    assert first.status == LeadStatus.DELETED
+    assert second.status == LeadStatus.DELETED

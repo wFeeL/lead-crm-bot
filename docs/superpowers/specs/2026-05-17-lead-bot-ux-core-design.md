@@ -201,9 +201,12 @@ uploading_files            ─[Продолжить]→       entering_contact
 entering_contact           ─[контакт]→          confirming
 confirming                 ─[✅]→               save_lead → LEAD_DONE → clear()
 
-ЛЮБОЕ → /cancel или 🚫 Отмена / 🏠 Меню → MAIN_MENU, clear()
-ЛЮБОЕ → ⬅ Назад → pop(nav_stack) → previous screen
+ЛЮБОЕ → /cancel или 🚫 Отмена → MAIN_MENU, state.clear()    # отмена + потеря draft
+ЛЮБОЕ → 🏠 Меню                → MAIN_MENU, nav_stack.clear() # draft сохраняется в FSM
+ЛЮБОЕ → ⬅ Назад              → pop(nav_stack) → previous screen
 ```
+
+> Разница между «🏠 Меню» и «🚫 Отмена»: первое — это «уйти к меню, но draft не теряем» (если пользователь хочет временно проверить «Мои заявки» и потом вернуться к незавершённой заявке через «Повторить» или «Оставить заявку»). Второе — явный отказ от текущего флоу, draft уничтожается. Это совпадает с поведением `nav:home` (`go_home()` чистит только `nav_stack`) и `nav:cancel` (`state.clear()`).
 
 ## Статусы, приоритеты и менеджмент
 

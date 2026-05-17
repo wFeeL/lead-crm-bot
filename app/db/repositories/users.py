@@ -48,3 +48,15 @@ class UserRepository:
                 user.role = UserRole.ADMIN
         await self.session.flush()
         return user
+
+    async def list_admins(self) -> list[User]:
+        """List non-blocked admins / managers / owners."""
+        from sqlalchemy import select
+        from app.core.constants import UserRole
+        result = await self.session.execute(
+            select(User).where(
+                User.role.in_((UserRole.ADMIN, UserRole.MANAGER, UserRole.OWNER)),
+                User.is_blocked.is_(False),
+            ).order_by(User.id)
+        )
+        return list(result.scalars().all())

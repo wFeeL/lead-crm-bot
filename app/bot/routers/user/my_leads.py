@@ -103,3 +103,7 @@ async def handle_lead_detail_action(
             state=state,
             screen=screen,
         )
+    else:
+        # Unhandled actions (e.g. literal "open" — currently dead) must still
+        # acknowledge the callback to clear Telegram's spinner.
+        await callback.answer()

@@ -9,10 +9,17 @@ class FormRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def list_categories(self, *, active_only: bool = True) -> list[LeadCategory]:
+    async def list_categories(
+        self,
+        *,
+        active_only: bool = True,
+        include_internal: bool = False,
+    ) -> list[LeadCategory]:
         stmt = select(LeadCategory).order_by(LeadCategory.sort_order, LeadCategory.id)
         if active_only:
             stmt = stmt.where(LeadCategory.is_active.is_(True))
+        if not include_internal:
+            stmt = stmt.where(LeadCategory.is_internal.is_(False))
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -39,6 +46,7 @@ class FormRepository:
         title: str,
         description: str | None,
         sort_order: int,
+        is_internal: bool = False,
     ) -> LeadCategory:
         category = LeadCategory(
             slug=slug,
@@ -46,6 +54,7 @@ class FormRepository:
             description=description,
             sort_order=sort_order,
             is_active=True,
+            is_internal=is_internal,
         )
         self.session.add(category)
         await self.session.flush()
@@ -89,4 +98,3 @@ class FormRepository:
                 )
             )
         await self.session.flush()
-

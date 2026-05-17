@@ -20,7 +20,7 @@ class MyLeadsCallback(CallbackData, prefix="my_leads"):
 
 
 class MyLeadDetailCallback(CallbackData, prefix="my_lead"):
-    action: Literal["open", "cancel"]
+    action: Literal["open", "cancel", "repeat"]
     lead_id: int
 
 
@@ -110,6 +110,15 @@ def render_my_lead_detail(
     text = "\n".join(text_lines)
 
     extra: list[list[InlineKeyboardButton]] = []
+    if lead.status not in ("rejected", "cancelled"):
+        extra.append(
+            [
+                InlineKeyboardButton(
+                    text="🔁 Повторить",
+                    callback_data=MyLeadDetailCallback(action="repeat", lead_id=lead.id).pack(),
+                )
+            ]
+        )
     if lead.status == "new":
         extra.append(
             [

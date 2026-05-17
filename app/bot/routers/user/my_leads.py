@@ -82,27 +82,53 @@ async def handle_lead_detail_action(
     current_user,
 ) -> None:
     if callback_data.action == "cancel":
-        service = LeadService(session, get_settings())
-        try:
-            await service.cancel_by_client(lead_id=callback_data.lead_id, actor=current_user)
-            await callback.answer("✅ Заявка отменена.")
-        except Exception as exc:
-            await callback.answer(str(exc), show_alert=True)
-            return
-        # Re-render detail with new status.
-        repo = LeadRepository(session)
-        lead = await repo.get(callback_data.lead_id)
-        if lead is None:
-            await callback.answer()
-            return
+        from app.bot.screens.cancel_reason import (
+            MY_LEAD_CANCEL_REASON_SCREEN_ID,
+            render_cancel_reason,
+        )
+
+        await push(state, MY_LEAD_CANCEL_REASON_SCREEN_ID)
         stack = await get_stack(state)
-        screen = render_my_lead_detail(content=content, lead=lead, stack=stack)
+        screen = render_cancel_reason(
+            content=content, lead_id=callback_data.lead_id, stack=stack
+        )
         await render_screen(
             bot=callback.bot,
             chat_id=callback.message.chat.id,
             state=state,
             screen=screen,
         )
+        await callback.answer()
+        return
+
+    elif callback_data.action == "repeat":
+        from app.bot.screens.lead_confirm import LEAD_CONFIRM_SCREEN_ID, render_lead_confirm
+        from app.bot.states.lead import LeadFormState
+        from app.core.exceptions import PermissionDeniedError, ValidationError
+
+        service = LeadService(session, get_settings())
+        try:
+            draft = await service.build_draft_from_lead(
+                lead_id=callback_data.lead_id, actor=current_user
+            )
+        except (PermissionDeniedError, ValidationError) as exc:
+            await callback.answer(str(exc), show_alert=True)
+            return
+
+        await state.set_state(LeadFormState.confirming)
+        await state.update_data(draft)
+        await push(state, LEAD_CONFIRM_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_lead_confirm(content=content, draft=draft, stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
+        await callback.answer()
+        return
+
     else:
         # Unhandled actions (e.g. literal "open" — currently dead) must still
         # acknowledge the callback to clear Telegram's spinner.

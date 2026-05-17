@@ -105,6 +105,37 @@ def test_my_lead_detail_no_cancel_button_for_done():
     assert all("Отменить" not in lbl for lbl in labels)
 
 
+def test_my_lead_detail_repeat_button_shown_for_non_terminal():
+    """Repeat button appears for in_progress leads (non-terminal status)."""
+    lead = _fake_lead(public_id="L1", status="in_progress")
+    screen = render_my_lead_detail(
+        content=_content(), lead=lead, stack=["main_menu", "my_leads", "my_lead_detail"]
+    )
+    labels = [btn.text for row in screen.keyboard.inline_keyboard for btn in row]
+    assert any("Повторить" in lbl for lbl in labels)
+
+
+def test_my_lead_detail_no_repeat_for_rejected():
+    """Repeat button does NOT appear for rejected leads."""
+    lead = _fake_lead(public_id="L1", status="rejected")
+    screen = render_my_lead_detail(
+        content=_content(), lead=lead, stack=["main_menu", "my_leads", "my_lead_detail"]
+    )
+    labels = [btn.text for row in screen.keyboard.inline_keyboard for btn in row]
+    assert all("Повторить" not in lbl for lbl in labels)
+
+
+def test_my_lead_detail_no_repeat_for_cancelled():
+    """Repeat button does NOT appear for cancelled leads."""
+    lead = _fake_lead(public_id="L1", status="cancelled")
+    screen = render_my_lead_detail(
+        content=_content(), lead=lead, stack=["main_menu", "my_leads", "my_lead_detail"]
+    )
+    labels = [btn.text for row in screen.keyboard.inline_keyboard for btn in row]
+    assert all("Повторить" not in lbl for lbl in labels)
+
+
 def test_my_leads_callbacks_pack():
     assert MyLeadsCallback(action="page", page=2).pack().startswith("my_leads:")
     assert MyLeadDetailCallback(action="cancel", lead_id=42).pack().startswith("my_lead:")
+    assert MyLeadDetailCallback(action="repeat", lead_id=42).pack().startswith("my_lead:")

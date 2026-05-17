@@ -151,8 +151,9 @@ async def test_my_leads_open_lead_shows_detail(content, state, session, current_
     assert lead.public_id in text
 
 
-async def test_my_leads_cancel_lead_updates_status(content, state, session, current_user):
-    """Cancelling a lead via MyLeadDetailCallback sets status to CANCELLED."""
+async def test_my_leads_cancel_lead_pushes_reason_screen(content, state, session, current_user):
+    """Clicking cancel on MY_LEAD_DETAIL now pushes the cancel-reason screen instead of
+    immediately cancelling the lead (Task 4.5 cancel reason flow)."""
     await state.update_data(
         {"root_message_id": 999, "nav_stack": ["main_menu", "my_leads", "my_lead_detail"]}
     )
@@ -182,9 +183,14 @@ async def test_my_leads_cancel_lead_updates_status(content, state, session, curr
         current_user=current_user,
     )
 
-    # Verify answer was called (success notification).
+    # Callback acknowledged.
     callback.answer.assert_awaited()
-    # Detail re-rendered.
+    # Cancel reason screen rendered (contains the "Отмена заявки" header).
     callback.bot.edit_message_text.assert_awaited_once()
     text = callback.bot.edit_message_text.await_args.kwargs["text"]
-    assert lead.public_id in text
+    assert "Отмена заявки" in text
+    # Lead is NOT yet cancelled — reason hasn't been selected.
+    from app.db.repositories.leads import LeadRepository as _LR
+
+    refreshed = await _LR(session).get(lead.id)
+    assert refreshed.status == LeadStatus.NEW

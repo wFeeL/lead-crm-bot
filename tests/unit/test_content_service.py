@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from app.services.content import ContentService
 
 
@@ -43,10 +42,7 @@ def minimal_profile(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (profile / "config.yaml").write_text(
-        "limits:\n"
-        "  max_files_per_lead: 7\n"
-        "ui:\n"
-        "  page_size_my_leads: 10\n",
+        "limits:\n  max_files_per_lead: 7\nui:\n  page_size_my_leads: 10\n",
         encoding="utf-8",
     )
     return profile

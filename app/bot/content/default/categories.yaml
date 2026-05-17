@@ -53,3 +53,13 @@
       text: "Опишите задачу."
       type: long_text
       required: true
+
+- slug: support
+  title: "Связь с менеджером"
+  description: "Обращение в поддержку"
+  internal: true
+  questions:
+    - key: message
+      text: "Опишите ваш вопрос"
+      type: long_text
+      required: true

@@ -16,9 +16,9 @@ async def test_ensure_seed_data_from_default_profile(session: AsyncSession):
     await session.commit()
 
     repo = FormRepository(session)
-    categories = await repo.list_categories()
+    categories = await repo.list_categories(include_internal=True)
     slugs = {c.slug for c in categories}
-    assert slugs == {"telegram_bot", "website", "consultation", "other"}
+    assert slugs == {"telegram_bot", "website", "consultation", "other", "support"}
 
     tg = await repo.get_category_by_slug("telegram_bot")
     assert tg is not None
@@ -38,9 +38,9 @@ async def test_ensure_seed_data_is_idempotent(session: AsyncSession):
     await session.commit()
 
     repo = FormRepository(session)
-    categories = await repo.list_categories()
-    # Still exactly 4 — no duplicates
-    assert len(categories) == 4
+    categories = await repo.list_categories(include_internal=True)
+    # Still exactly 5 — no duplicates
+    assert len(categories) == 5
 
 
 def test_fastapi_lifespan_loads_content():

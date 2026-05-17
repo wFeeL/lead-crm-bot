@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -41,7 +41,7 @@ def _fake_lead(
         contact_phone=contact_phone,
         contact_username=contact_username,
         category=SimpleNamespace(title=category_title),
-        created_at=datetime(2026, 5, 17, 10, 0, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 5, 17, 10, 0, 0, tzinfo=UTC),
     )
 
 
@@ -138,7 +138,14 @@ def test_render_admin_lead_detail_priority_row_marks_current():
 
 
 def test_admin_detail_callbacks_pack():
-    assert AdminDetailCallback(action="set_status", lead_id=1, value="done").pack().startswith("adm_det:")
-    assert AdminDetailCallback(action="set_priority", lead_id=1, value="high").pack().startswith("adm_det:")
-    assert AdminDetailCallback(action="comment_internal", lead_id=1).pack().startswith("adm_det:")
-    assert AdminDetailCallback(action="assign_me", lead_id=1).pack().startswith("adm_det:")
+    prefix = "adm_det:"
+    assert (
+        AdminDetailCallback(action="set_status", lead_id=1, value="done").pack().startswith(prefix)
+    )
+    assert (
+        AdminDetailCallback(action="set_priority", lead_id=1, value="high")
+        .pack()
+        .startswith(prefix)
+    )
+    assert AdminDetailCallback(action="comment_internal", lead_id=1).pack().startswith(prefix)
+    assert AdminDetailCallback(action="assign_me", lead_id=1).pack().startswith(prefix)

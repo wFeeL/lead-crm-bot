@@ -39,7 +39,9 @@ def test_render_assign_list_structure():
 
 
 def test_render_assign_list_shows_admins():
-    admins = [_fake_admin(admin_id=i, username=f"admin{i}", first_name=f"Admin{i}") for i in range(2)]
+    admins = [
+        _fake_admin(admin_id=i, username=f"admin{i}", first_name=f"Admin{i}") for i in range(2)
+    ]
     screen = render_admin_assign_list(
         content=_content(),
         lead_id=10,
@@ -114,6 +116,7 @@ def test_render_assign_list_marks_current_admin():
 
 
 def test_admin_assign_callbacks_pack():
-    assert AdminAssignCallback(action="pick", lead_id=1, admin_id=2).pack().startswith("adm_assign:")
-    assert AdminAssignCallback(action="unassign", lead_id=1).pack().startswith("adm_assign:")
-    assert AdminAssignCallback(action="page", lead_id=1, page=2).pack().startswith("adm_assign:")
+    prefix = "adm_assign:"
+    assert AdminAssignCallback(action="pick", lead_id=1, admin_id=2).pack().startswith(prefix)
+    assert AdminAssignCallback(action="unassign", lead_id=1).pack().startswith(prefix)
+    assert AdminAssignCallback(action="page", lead_id=1, page=2).pack().startswith(prefix)

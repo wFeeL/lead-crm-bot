@@ -39,31 +39,44 @@ def render_admin_lead_list(
     for lead in leads:
         status_emoji = (
             content.texts.statuses[lead.status].emoji
-            if lead.status in content.texts.statuses else "•"
+            if lead.status in content.texts.statuses
+            else "•"
         )
         priority_emoji = (
             content.texts.priorities[lead.priority].emoji
-            if lead.priority in content.texts.priorities else " "
+            if lead.priority in content.texts.priorities
+            else " "
         )
-        category_title = getattr(lead.category, "title", "?") if getattr(lead, "category", None) else "?"
+        cat = getattr(lead, "category", None)
+        category_title = getattr(cat, "title", "?") if cat else "?"
         label = f"{priority_emoji} {status_emoji} №{lead.public_id} · {category_title}"
-        extra.append([
-            InlineKeyboardButton(
-                text=label,
-                callback_data=AdminLeadListCallback(action="open", lead_id=lead.id, page=page).pack(),
-            )
-        ])
+        extra.append(
+            [
+                InlineKeyboardButton(
+                    text=label,
+                    callback_data=AdminLeadListCallback(
+                        action="open", lead_id=lead.id, page=page
+                    ).pack(),
+                )
+            ]
+        )
 
     pagination_row = []
     if page > 1:
-        pagination_row.append(InlineKeyboardButton(
-            text="◀", callback_data=AdminLeadListCallback(action="page", page=page - 1).pack(),
-        ))
+        pagination_row.append(
+            InlineKeyboardButton(
+                text="◀",
+                callback_data=AdminLeadListCallback(action="page", page=page - 1).pack(),
+            )
+        )
     pagination_row.append(InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop"))
     if page < total_pages:
-        pagination_row.append(InlineKeyboardButton(
-            text="▶", callback_data=AdminLeadListCallback(action="page", page=page + 1).pack(),
-        ))
+        pagination_row.append(
+            InlineKeyboardButton(
+                text="▶",
+                callback_data=AdminLeadListCallback(action="page", page=page + 1).pack(),
+            )
+        )
     extra.append(pagination_row)
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=nav_footer(stack=stack, extra=extra))

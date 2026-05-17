@@ -13,7 +13,14 @@ ADMIN_LEAD_DETAIL_SCREEN_ID = "admin_lead_detail"
 
 
 class AdminDetailCallback(CallbackData, prefix="adm_det"):
-    action: Literal["set_status", "set_priority", "comment_internal", "comment_reply", "assign", "assign_me"]
+    action: Literal[
+        "set_status",
+        "set_priority",
+        "comment_internal",
+        "comment_reply",
+        "assign",
+        "assign_me",
+    ]
     lead_id: int
     value: str = ""  # For set_status / set_priority
 
@@ -26,16 +33,20 @@ def render_admin_lead_detail(
 ) -> Screen:
     status_meta = content.texts.statuses.get(lead.status)
     priority_meta = content.texts.priorities.get(lead.priority)
-    category_title = getattr(lead.category, "title", "?") if getattr(lead, "category", None) else "?"
+    cat = getattr(lead, "category", None)
+    category_title = getattr(cat, "title", "?") if cat else "?"
     assigned_text = "—"
     if getattr(lead, "assigned_admin", None):
         admin = lead.assigned_admin
         username = f"@{admin.username}" if admin.username else f"id{admin.id}"
         assigned_text = f"{admin.first_name or ''} {username}".strip()
 
+    s_emoji = status_meta.emoji if status_meta else ""
+    s_label = status_meta.label if status_meta else lead.status
+    p_emoji = priority_meta.emoji if priority_meta else ""
+    p_label = priority_meta.label if priority_meta else lead.priority
     lines = [
-        f"<b>Заявка №{lead.public_id}</b> · {status_meta.emoji if status_meta else ''} {status_meta.label if status_meta else lead.status} · "
-        f"{priority_meta.emoji if priority_meta else ''} {priority_meta.label if priority_meta else lead.priority}",
+        f"<b>Заявка №{lead.public_id}</b> · {s_emoji} {s_label} · {p_emoji} {p_label}",
         f"Категория: {category_title}",
         f"Контакт: {lead.contact_phone or lead.contact_username or '—'}",
         f"Назначен: {assigned_text}",
@@ -53,48 +64,50 @@ def render_admin_lead_detail(
     for target in (LeadStatus.CONTACTED, LeadStatus.IN_PROGRESS, LeadStatus.WAITING):
         if target in available:
             meta = content.texts.statuses.get(target.value)
-            status_row.append(InlineKeyboardButton(
-                text=f"{meta.emoji if meta else ''} {meta.label if meta else target.value}",
-                callback_data=AdminDetailCallback(
-                    action="set_status", lead_id=lead.id, value=target.value
-                ).pack(),
-            ))
+            status_row.append(
+                InlineKeyboardButton(
+                    text=f"{meta.emoji if meta else ''} {meta.label if meta else target.value}",
+                    callback_data=AdminDetailCallback(
+                        action="set_status", lead_id=lead.id, value=target.value
+                    ).pack(),
+                )
+            )
     close_row = []
     for target in (LeadStatus.DONE, LeadStatus.REJECTED):
         if target in available:
             meta = content.texts.statuses.get(target.value)
-            close_row.append(InlineKeyboardButton(
-                text=f"{meta.emoji if meta else ''} {meta.label if meta else target.value}",
-                callback_data=AdminDetailCallback(
-                    action="set_status", lead_id=lead.id, value=target.value
-                ).pack(),
-            ))
+            close_row.append(
+                InlineKeyboardButton(
+                    text=f"{meta.emoji if meta else ''} {meta.label if meta else target.value}",
+                    callback_data=AdminDetailCallback(
+                        action="set_status", lead_id=lead.id, value=target.value
+                    ).pack(),
+                )
+            )
 
     # Priority row (always 4 buttons; current marked).
     prio_row = []
     for p in ("low", "normal", "high", "urgent"):
         meta = content.texts.priorities.get(p)
         mark = "✓ " if lead.priority == p else ""
-        prio_row.append(InlineKeyboardButton(
-            text=f"{mark}{meta.emoji if meta else ''}",
-            callback_data=AdminDetailCallback(
-                action="set_priority", lead_id=lead.id, value=p
-            ).pack(),
-        ))
+        prio_row.append(
+            InlineKeyboardButton(
+                text=f"{mark}{meta.emoji if meta else ''}",
+                callback_data=AdminDetailCallback(
+                    action="set_priority", lead_id=lead.id, value=p
+                ).pack(),
+            )
+        )
 
     # Comments + assignment row.
     actions_row1 = [
         InlineKeyboardButton(
             text="📝 Внутренний",
-            callback_data=AdminDetailCallback(
-                action="comment_internal", lead_id=lead.id
-            ).pack(),
+            callback_data=AdminDetailCallback(action="comment_internal", lead_id=lead.id).pack(),
         ),
         InlineKeyboardButton(
             text="💬 Клиенту",
-            callback_data=AdminDetailCallback(
-                action="comment_reply", lead_id=lead.id
-            ).pack(),
+            callback_data=AdminDetailCallback(action="comment_reply", lead_id=lead.id).pack(),
         ),
     ]
     actions_row2 = [
@@ -104,10 +117,13 @@ def render_admin_lead_detail(
         ),
     ]
     if not getattr(lead, "assigned_admin_id", None):
-        actions_row2.insert(0, InlineKeyboardButton(
-            text="🙋 Взять себе",
-            callback_data=AdminDetailCallback(action="assign_me", lead_id=lead.id).pack(),
-        ))
+        actions_row2.insert(
+            0,
+            InlineKeyboardButton(
+                text="🙋 Взять себе",
+                callback_data=AdminDetailCallback(action="assign_me", lead_id=lead.id).pack(),
+            ),
+        )
 
     extra = []
     if status_row:

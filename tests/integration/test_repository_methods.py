@@ -1,9 +1,9 @@
 """Tests for new repository methods added in Task 5.1."""
+
 from pathlib import Path
 
 import pytest
-
-from app.core.constants import LeadPriority, LeadStatus, UserRole
+from app.core.config import Settings
 from app.db.repositories.forms import FormRepository
 from app.db.repositories.leads import LeadRepository
 from app.db.repositories.users import UserRepository
@@ -11,13 +11,14 @@ from app.schemas.lead import LeadCreateInput
 from app.services.content import ContentService
 from app.services.forms import ensure_seed_data
 from app.services.leads import LeadService
-from app.core.config import Settings
 
 _CONTENT_DIR = Path(__file__).resolve().parents[2] / "app" / "bot" / "content" / "default"
 _BUNDLE = ContentService.load(_CONTENT_DIR)
 
 
-async def _seed_and_create_lead(session, telegram_id: int, *, priority: str = "normal", status: str = "new"):
+async def _seed_and_create_lead(
+    session, telegram_id: int, *, priority: str = "normal", status: str = "new"
+):
     """Helper: seed, create user and a lead; set status and priority as requested."""
     await ensure_seed_data(session, _BUNDLE)
     category = await FormRepository(session).get_category_by_slug("other")
@@ -138,14 +139,25 @@ async def test_list_admins_returns_only_admin_roles_not_blocked(session) -> None
     user_repo = UserRepository(session)
 
     admin = await user_repo.upsert_telegram_user(
-        telegram_id=7001, username="admin_a", first_name="Admin", last_name=None, is_admin=True,
+        telegram_id=7001,
+        username="admin_a",
+        first_name="Admin",
+        last_name=None,
+        is_admin=True,
     )
     client = await user_repo.upsert_telegram_user(
-        telegram_id=7002, username="client_b", first_name="Client", last_name=None,
+        telegram_id=7002,
+        username="client_b",
+        first_name="Client",
+        last_name=None,
     )
     # Create a blocked admin
     blocked_admin = await user_repo.upsert_telegram_user(
-        telegram_id=7003, username="admin_blocked", first_name="Blocked", last_name=None, is_admin=True,
+        telegram_id=7003,
+        username="admin_blocked",
+        first_name="Blocked",
+        last_name=None,
+        is_admin=True,
     )
     blocked_admin.is_blocked = True
     session.add(blocked_admin)

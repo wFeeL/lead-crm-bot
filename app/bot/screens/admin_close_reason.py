@@ -28,26 +28,38 @@ def render_admin_close_reason(
 ) -> Screen:
     is_rejected = target_status == "rejected"
     reasons = (
-        content.texts.close_reasons.rejected if is_rejected
-        else content.texts.close_reasons.done
+        content.texts.close_reasons.rejected if is_rejected else content.texts.close_reasons.done
     )
     extra = []
     for i, reason in enumerate(reasons):
         cb_action = "custom" if reason == CUSTOM_REASON_LABEL else "pick"
-        extra.append([InlineKeyboardButton(
-            text=reason,
-            callback_data=AdminCloseReasonCallback(
-                action=cb_action, lead_id=lead_id, target_status=target_status, index=i,
-            ).pack(),
-        )])
+        extra.append(
+            [
+                InlineKeyboardButton(
+                    text=reason,
+                    callback_data=AdminCloseReasonCallback(
+                        action=cb_action,
+                        lead_id=lead_id,
+                        target_status=target_status,
+                        index=i,
+                    ).pack(),
+                )
+            ]
+        )
     if not is_rejected:
         # DONE: optional reason — allow skipping.
-        extra.append([InlineKeyboardButton(
-            text="⏭ Без причины",
-            callback_data=AdminCloseReasonCallback(
-                action="skip", lead_id=lead_id, target_status=target_status,
-            ).pack(),
-        )])
+        extra.append(
+            [
+                InlineKeyboardButton(
+                    text="⏭ Без причины",
+                    callback_data=AdminCloseReasonCallback(
+                        action="skip",
+                        lead_id=lead_id,
+                        target_status=target_status,
+                    ).pack(),
+                )
+            ]
+        )
 
     intro = "Укажите причину отказа" if is_rejected else "Краткое резюме (можно пропустить)"
     text = f"{intro}:"

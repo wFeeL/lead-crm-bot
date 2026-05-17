@@ -16,7 +16,9 @@ def _content():
     return ContentService(ContentService.load(_CONTENT_DIR))
 
 
-def _fake_lead(lead_id=1, public_id="TG-000001", status="new", priority="normal", category_title="Боты"):
+def _fake_lead(
+    lead_id=1, public_id="TG-000001", status="new", priority="normal", category_title="Боты"
+):
     return SimpleNamespace(
         id=lead_id,
         public_id=public_id,

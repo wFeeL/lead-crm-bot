@@ -28,22 +28,18 @@ def render_admin_menu(
         f"⏳ Ждут клиента: {status_counts.get('waiting', 0)}\n\n"
         f"🔥 Срочных и высоких: {hot_count}"
     )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🆕 Новые", callback_data=AdminMenuCallback(action="new").pack()),
-            InlineKeyboardButton(text="📞 Связались", callback_data=AdminMenuCallback(action="contacted").pack()),
-        ],
-        [
-            InlineKeyboardButton(text="🛠 В работе", callback_data=AdminMenuCallback(action="in_progress").pack()),
-            InlineKeyboardButton(text="⏳ Ждут", callback_data=AdminMenuCallback(action="waiting").pack()),
-        ],
-        [
-            InlineKeyboardButton(text="🔥 Срочные", callback_data=AdminMenuCallback(action="hot").pack()),
-            InlineKeyboardButton(text="📋 Все", callback_data=AdminMenuCallback(action="all").pack()),
-        ],
-        [
-            InlineKeyboardButton(text="📤 CSV", callback_data=AdminMenuCallback(action="csv").pack()),
-            InlineKeyboardButton(text="📊 Статистика дня", callback_data=AdminMenuCallback(action="stats").pack()),
-        ],
-    ])
+
+    def _btn(text: str, action: str) -> InlineKeyboardButton:
+        return InlineKeyboardButton(
+            text=text, callback_data=AdminMenuCallback(action=action).pack()
+        )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [_btn("🆕 Новые", "new"), _btn("📞 Связались", "contacted")],
+            [_btn("🛠 В работе", "in_progress"), _btn("⏳ Ждут", "waiting")],
+            [_btn("🔥 Срочные", "hot"), _btn("📋 Все", "all")],
+            [_btn("📤 CSV", "csv"), _btn("📊 Статистика дня", "stats")],
+        ]
+    )
     return Screen(screen_id=ADMIN_MENU_SCREEN_ID, text=text, keyboard=keyboard)

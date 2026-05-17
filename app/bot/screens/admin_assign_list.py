@@ -31,39 +31,60 @@ def render_admin_assign_list(
     stack: Sequence[str],
 ) -> Screen:
     total_pages = max(1, ceil(total / page_size))
-    text = f"Кому назначить заявку?"
+    text = "Кому назначить заявку?"
     extra = []
     if current_admin_id is not None:
-        extra.append([InlineKeyboardButton(
-            text="➖ Снять назначение",
-            callback_data=AdminAssignCallback(
-                action="unassign", lead_id=lead_id,
-            ).pack(),
-        )])
+        extra.append(
+            [
+                InlineKeyboardButton(
+                    text="➖ Снять назначение",
+                    callback_data=AdminAssignCallback(
+                        action="unassign",
+                        lead_id=lead_id,
+                    ).pack(),
+                )
+            ]
+        )
     for admin in admins:
         username = f"@{admin.username}" if admin.username else f"id{admin.id}"
         mark = "✓ " if current_admin_id == admin.id else ""
-        extra.append([InlineKeyboardButton(
-            text=f"{mark}{admin.first_name or ''} {username}".strip(),
-            callback_data=AdminAssignCallback(
-                action="pick", lead_id=lead_id, admin_id=admin.id,
-            ).pack(),
-        )])
+        extra.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{mark}{admin.first_name or ''} {username}".strip(),
+                    callback_data=AdminAssignCallback(
+                        action="pick",
+                        lead_id=lead_id,
+                        admin_id=admin.id,
+                    ).pack(),
+                )
+            ]
+        )
 
     pagination_row = []
     if page > 1:
-        pagination_row.append(InlineKeyboardButton(
-            text="◀", callback_data=AdminAssignCallback(
-                action="page", lead_id=lead_id, page=page - 1,
-            ).pack(),
-        ))
+        pagination_row.append(
+            InlineKeyboardButton(
+                text="◀",
+                callback_data=AdminAssignCallback(
+                    action="page",
+                    lead_id=lead_id,
+                    page=page - 1,
+                ).pack(),
+            )
+        )
     pagination_row.append(InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop"))
     if page < total_pages:
-        pagination_row.append(InlineKeyboardButton(
-            text="▶", callback_data=AdminAssignCallback(
-                action="page", lead_id=lead_id, page=page + 1,
-            ).pack(),
-        ))
+        pagination_row.append(
+            InlineKeyboardButton(
+                text="▶",
+                callback_data=AdminAssignCallback(
+                    action="page",
+                    lead_id=lead_id,
+                    page=page + 1,
+                ).pack(),
+            )
+        )
     if total_pages > 1:
         extra.append(pagination_row)
 

@@ -285,6 +285,7 @@ class LeadRepository:
     async def status_counts(self) -> dict[str, int]:
         """Total count per status across ALL leads (not date-filtered)."""
         from sqlalchemy import func, select
+
         result = await self.session.execute(
             select(Lead.status, func.count(Lead.id)).group_by(Lead.status)
         )
@@ -293,6 +294,7 @@ class LeadRepository:
     async def hot_count(self) -> int:
         """Count of non-terminal leads with priority high or urgent."""
         from sqlalchemy import func, select
+
         result = await self.session.execute(
             select(func.count(Lead.id)).where(
                 Lead.priority.in_(("high", "urgent")),
@@ -312,6 +314,7 @@ class LeadRepository:
     ) -> list[Lead]:
         """List leads sorted by priority DESC then created_at DESC."""
         from sqlalchemy import case, desc, select
+
         # priority sort: urgent > high > normal > low. Map to numeric.
         priority_order = case(
             (Lead.priority == "urgent", 4),
@@ -330,7 +333,9 @@ class LeadRepository:
                 Lead.priority.in_(("high", "urgent")),
                 Lead.status.not_in(("done", "rejected", "cancelled")),
             )
-        stmt = stmt.order_by(desc(priority_order), desc(Lead.created_at)).limit(limit).offset(offset)
+        stmt = (
+            stmt.order_by(desc(priority_order), desc(Lead.created_at)).limit(limit).offset(offset)
+        )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -342,6 +347,7 @@ class LeadRepository:
         hot: bool = False,
     ) -> int:
         from sqlalchemy import func, select
+
         stmt = select(func.count(Lead.id))
         if status is not None:
             stmt = stmt.where(Lead.status == status)

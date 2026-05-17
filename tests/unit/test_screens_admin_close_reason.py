@@ -60,6 +60,19 @@ def test_render_close_reason_buttons_have_correct_prefix():
 
 
 def test_admin_close_reason_callbacks_pack():
-    assert AdminCloseReasonCallback(action="pick", lead_id=1, target_status="rejected", index=0).pack().startswith("adm_close:")
-    assert AdminCloseReasonCallback(action="custom", lead_id=1, target_status="done", index=0).pack().startswith("adm_close:")
-    assert AdminCloseReasonCallback(action="skip", lead_id=1, target_status="done").pack().startswith("adm_close:")
+    prefix = "adm_close:"
+    assert (
+        AdminCloseReasonCallback(action="pick", lead_id=1, target_status="rejected", index=0)
+        .pack()
+        .startswith(prefix)
+    )
+    assert (
+        AdminCloseReasonCallback(action="custom", lead_id=1, target_status="done", index=0)
+        .pack()
+        .startswith(prefix)
+    )
+    assert (
+        AdminCloseReasonCallback(action="skip", lead_id=1, target_status="done")
+        .pack()
+        .startswith(prefix)
+    )

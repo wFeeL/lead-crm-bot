@@ -32,7 +32,11 @@ async def state():
 
 
 @pytest.fixture
-async def current_user(session: AsyncSession):
+async def current_user(session: AsyncSession, content):
+    from app.services.forms import ensure_seed_data
+
+    await ensure_seed_data(session, content.bundle)
+    await session.commit()
     repo = UserRepository(session)
     return await repo.upsert_telegram_user(
         telegram_id=42,
@@ -68,7 +72,7 @@ async def test_support_write_pushes_writing_screen(content, state):
 
 
 async def test_support_message_submission(content, state, session, current_user):
-    """Submitting a non-empty message thanks the user and re-renders main menu."""
+    """Submitting a non-empty message creates a real lead and re-renders main menu."""
     await state.set_state(SupportState.writing_message)
     await state.update_data(
         {
@@ -94,8 +98,10 @@ async def test_support_message_submission(content, state, session, current_user)
         current_user=current_user,
     )
 
-    # User received the "thanks" reply.
+    # User received the "thanks" reply with lead number.
     message.answer.assert_awaited()
+    args, _ = message.answer.await_args
+    assert "обращение" in args[0].lower() or "обращение" in str(args[0]).lower()
     # FSM state cleared.
     assert await state.get_state() is None
     # Main menu re-rendered (edit or send).
@@ -126,10 +132,10 @@ async def test_support_message_empty_text_asks_again(content, state, session, cu
     assert await state.get_state() == SupportState.writing_message.state
 
 
-async def test_support_message_long_text_is_truncated_in_preview(
+async def test_support_message_long_text_creates_lead(
     content, state, session, current_user
 ):
-    """Long messages are accepted; preview truncation does not crash the handler."""
+    """Long messages are accepted; a lead is created and state is cleared."""
     await state.set_state(SupportState.writing_message)
     await state.update_data(
         {
@@ -142,7 +148,7 @@ async def test_support_message_long_text_is_truncated_in_preview(
     bot.edit_message_text = AsyncMock()
     bot.send_message = AsyncMock(return_value=MagicMock(message_id=1000))
     message = MagicMock()
-    message.text = "X" * 500  # exceeds the 200-char preview limit
+    message.text = "X" * 500  # long text
     message.bot = bot
     message.chat = MagicMock(id=42)
     message.answer = AsyncMock()
@@ -156,7 +162,4 @@ async def test_support_message_long_text_is_truncated_in_preview(
     )
 
     message.answer.assert_awaited()
-    # Check truncation marker present in thanks reply.
-    args, _ = message.answer.await_args
-    assert "…" in args[0]
     assert await state.get_state() is None

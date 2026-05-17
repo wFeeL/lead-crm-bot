@@ -596,6 +596,7 @@ async def _submit_lead(callback, state, session, current_user, content):
         contact_username=data.get("contact_username") or current_user.username,
         answers=answers,
         files=files,
+        source=data.get("source", "bot"),
     )
     service = LeadService(session, get_settings())
     try:

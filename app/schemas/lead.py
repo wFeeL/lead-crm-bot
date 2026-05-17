@@ -31,6 +31,7 @@ class LeadCreateInput(BaseModel):
     preferred_contact_time: str | None = None
     answers: list[LeadAnswerInput] = Field(default_factory=list)
     files: list[LeadFileInput] = Field(default_factory=list)
+    source: str = "bot"
 
 
 class LeadStatusUpdate(BaseModel):

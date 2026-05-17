@@ -140,7 +140,7 @@ class LeadRepository:
                     contact_phone=data.contact_phone,
                     contact_username=data.contact_username,
                     preferred_contact_time=data.preferred_contact_time,
-                    source="telegram",
+                    source=data.source,
                 )
                 self.session.add(lead)
                 await self.session.flush()

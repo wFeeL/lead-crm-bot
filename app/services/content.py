@@ -18,6 +18,7 @@ class ContentService:
 
     def __init__(self, bundle: ContentBundle) -> None:
         self._bundle = bundle
+        self._texts_dump: dict[str, Any] = bundle.texts.model_dump()
 
     @property
     def bundle(self) -> ContentBundle:
@@ -46,17 +47,26 @@ class ContentService:
     def text(self, key: str, **kwargs: object) -> str:
         """Look up a text template by dotted path and apply str.format() with kwargs.
 
-        Falls back to KeyError when the path does not resolve and TypeError when
-        the resolved value is not a string template.
+        Raises KeyError when the dotted path does not resolve.
+        Raises TypeError when the resolved value is not a string template.
+        Raises ValueError when format() substitution fails (missing kwarg for {placeholder}).
         """
-        node: object = self._bundle.texts.model_dump()
+        node: object = self._texts_dump
         for part in key.split("."):
             if not isinstance(node, dict) or part not in node:
                 raise KeyError(key)
             node = node[part]
         if not isinstance(node, str):
             raise TypeError(f"text key {key!r} resolves to non-string {type(node).__name__}")
-        return node.format(**kwargs) if kwargs else node
+        if not kwargs:
+            return node
+        try:
+            return node.format(**kwargs)
+        except KeyError as exc:
+            raise ValueError(
+                f"text key {key!r} template requires placeholder {exc.args[0]!r}"
+                " but it was not provided"
+            ) from exc
 
     @staticmethod
     def load(profile_dir: Path) -> ContentBundle:

@@ -145,3 +145,36 @@ def test_text_non_string_value_raises(minimal_profile: Path):
     # 'main_menu' itself is a dict, not a string
     with pytest.raises(TypeError, match="main_menu"):
         service.text("main_menu")
+
+
+def test_text_extra_kwargs_ignored(minimal_profile: Path):
+    bundle = ContentService.load(minimal_profile)
+    service = ContentService(bundle)
+    # No placeholders in 'Меню', extra kwargs should be silently ignored.
+    assert service.text("main_menu.title", unused="x") == "Меню"
+
+
+def test_text_format_missing_kwarg_raises_value_error(minimal_profile: Path):
+    (minimal_profile / "texts.yaml").write_text(
+        "main_menu:\n"
+        "  title: 'Привет, {name}!'\n"
+        "statuses:\n"
+        "  new: {label: 'Новая', emoji: '🆕'}\n"
+        "priorities:\n"
+        "  normal: {label: 'Обычный', emoji: '⚪'}\n"
+        "close_reasons:\n"
+        "  rejected: ['x']\n"
+        "  done: ['x']\n"
+        "  cancelled: ['x']\n",
+        encoding="utf-8",
+    )
+    bundle = ContentService.load(minimal_profile)
+    service = ContentService(bundle)
+    with pytest.raises(ValueError, match="placeholder 'name'"):
+        service.text("main_menu.title", wrong="x")
+
+
+def test_text_nested_status_label(minimal_profile: Path):
+    bundle = ContentService.load(minimal_profile)
+    service = ContentService(bundle)
+    assert service.text("statuses.new.label") == "Новая"

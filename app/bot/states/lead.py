@@ -9,5 +9,4 @@ class LeadFormState(StatesGroup):
     confirming = State()
 
 
-class AdminCommentState(StatesGroup):
-    waiting_for_comment = State()
+# AdminCommentState removed — admin flow states now live in app/bot/states/admin_flow.py

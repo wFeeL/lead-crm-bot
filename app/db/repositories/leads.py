@@ -22,9 +22,10 @@ class LeadRepository:
         return (
             selectinload(Lead.answers),
             selectinload(Lead.files),
-            selectinload(Lead.comments),
+            selectinload(Lead.comments).selectinload(LeadComment.admin),
             selectinload(Lead.category),
             selectinload(Lead.user),
+            selectinload(Lead.assigned_admin),
         )
 
     async def get(self, lead_id: int) -> Lead | None:

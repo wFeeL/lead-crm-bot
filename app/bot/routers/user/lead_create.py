@@ -518,7 +518,15 @@ async def on_contact(
     stack = await get_stack(state)
     data = await state.get_data()
     screen = render_lead_confirm(content=content, draft=data, stack=stack)
-    await render_screen(bot=message.bot, chat_id=message.chat.id, state=state, screen=screen)
+    # End-of-wizard summary must be a fresh message so the user can scroll back
+    # over their answers; editing the old wizard message hides everything.
+    await render_screen(
+        bot=message.bot,
+        chat_id=message.chat.id,
+        state=state,
+        screen=screen,
+        force_new=True,
+    )
 
 
 # ============= Step 5: confirm & submit =============

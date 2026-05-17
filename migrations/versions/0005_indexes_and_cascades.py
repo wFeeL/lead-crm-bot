@@ -22,9 +22,7 @@ def _dialect_name() -> str:
 
 def upgrade() -> None:
     # --- Indexes (portable across dialects) ---
-    op.create_index(
-        "ix_leads_assigned_admin_id", "leads", ["assigned_admin_id"], unique=False
-    )
+    op.create_index("ix_leads_assigned_admin_id", "leads", ["assigned_admin_id"], unique=False)
     op.create_index(
         "ix_leads_priority_created_at",
         "leads",
@@ -50,12 +48,8 @@ def upgrade() -> None:
     # referenced by FKs from lead_answers/lead_files/lead_events/lead_comments.
     if _dialect_name() == "sqlite":
         with op.batch_alter_table("lead_comments", recreate="always") as batch_op:
-            batch_op.drop_constraint(
-                "fk_lead_comments_admin_id_users", type_="foreignkey"
-            )
-            batch_op.alter_column(
-                "admin_id", existing_type=sa.Integer(), nullable=True
-            )
+            batch_op.drop_constraint("fk_lead_comments_admin_id_users", type_="foreignkey")
+            batch_op.alter_column("admin_id", existing_type=sa.Integer(), nullable=True)
             batch_op.create_foreign_key(
                 "fk_lead_comments_admin_id_users",
                 "users",
@@ -64,9 +58,7 @@ def upgrade() -> None:
                 ondelete="SET NULL",
             )
         with op.batch_alter_table("leads", recreate="always") as batch_op:
-            batch_op.drop_constraint(
-                "fk_leads_assigned_admin_id_users", type_="foreignkey"
-            )
+            batch_op.drop_constraint("fk_leads_assigned_admin_id_users", type_="foreignkey")
             batch_op.create_foreign_key(
                 "fk_leads_assigned_admin_id_users",
                 "users",
@@ -76,9 +68,7 @@ def upgrade() -> None:
             )
     else:
         # Native ALTER (PostgreSQL etc.) — touches only the FK in question.
-        op.drop_constraint(
-            "fk_lead_comments_admin_id_users", "lead_comments", type_="foreignkey"
-        )
+        op.drop_constraint("fk_lead_comments_admin_id_users", "lead_comments", type_="foreignkey")
         op.alter_column(
             "lead_comments",
             "admin_id",
@@ -93,9 +83,7 @@ def upgrade() -> None:
             ["id"],
             ondelete="SET NULL",
         )
-        op.drop_constraint(
-            "fk_leads_assigned_admin_id_users", "leads", type_="foreignkey"
-        )
+        op.drop_constraint("fk_leads_assigned_admin_id_users", "leads", type_="foreignkey")
         op.create_foreign_key(
             "fk_leads_assigned_admin_id_users",
             "leads",
@@ -109,9 +97,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     if _dialect_name() == "sqlite":
         with op.batch_alter_table("leads", recreate="always") as batch_op:
-            batch_op.drop_constraint(
-                "fk_leads_assigned_admin_id_users", type_="foreignkey"
-            )
+            batch_op.drop_constraint("fk_leads_assigned_admin_id_users", type_="foreignkey")
             batch_op.create_foreign_key(
                 "fk_leads_assigned_admin_id_users",
                 "users",
@@ -119,12 +105,8 @@ def downgrade() -> None:
                 ["id"],
             )
         with op.batch_alter_table("lead_comments", recreate="always") as batch_op:
-            batch_op.drop_constraint(
-                "fk_lead_comments_admin_id_users", type_="foreignkey"
-            )
-            batch_op.alter_column(
-                "admin_id", existing_type=sa.Integer(), nullable=False
-            )
+            batch_op.drop_constraint("fk_lead_comments_admin_id_users", type_="foreignkey")
+            batch_op.alter_column("admin_id", existing_type=sa.Integer(), nullable=False)
             batch_op.create_foreign_key(
                 "fk_lead_comments_admin_id_users",
                 "users",
@@ -132,9 +114,7 @@ def downgrade() -> None:
                 ["id"],
             )
     else:
-        op.drop_constraint(
-            "fk_leads_assigned_admin_id_users", "leads", type_="foreignkey"
-        )
+        op.drop_constraint("fk_leads_assigned_admin_id_users", "leads", type_="foreignkey")
         op.create_foreign_key(
             "fk_leads_assigned_admin_id_users",
             "leads",
@@ -142,9 +122,7 @@ def downgrade() -> None:
             ["assigned_admin_id"],
             ["id"],
         )
-        op.drop_constraint(
-            "fk_lead_comments_admin_id_users", "lead_comments", type_="foreignkey"
-        )
+        op.drop_constraint("fk_lead_comments_admin_id_users", "lead_comments", type_="foreignkey")
         op.alter_column(
             "lead_comments",
             "admin_id",

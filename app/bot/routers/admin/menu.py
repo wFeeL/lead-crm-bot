@@ -222,13 +222,19 @@ async def on_admin_list_action(
             await callback.answer("Не найдено.", show_alert=True)
             return
         await push(state, ADMIN_LEAD_DETAIL_SCREEN_ID)
+        # Remember which lead the admin is currently viewing so the back-renderer
+        # (admin_lead_detail) can re-fetch it when the user backs out of nested
+        # screens like assignment list / close-reason / comment prompt.
+        await state.update_data(admin_current_lead_id=lead.id)
         stack = await get_stack(state)
         screen = render_admin_lead_detail(content=content, lead=lead, stack=stack)
+        # Open the lead in a fresh message so the previous list stays scrollable.
         await render_screen(
             bot=callback.bot,
             chat_id=callback.message.chat.id,
             state=state,
             screen=screen,
+            force_new=True,
         )
     await callback.answer()
 
@@ -647,3 +653,4 @@ async def on_admin_comment_text(
         screen=screen,
     )
     await message.answer("✅ Сохранено.")
+

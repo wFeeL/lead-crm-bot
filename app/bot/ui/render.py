@@ -16,18 +16,22 @@ async def render_screen(
     chat_id: int,
     state: FSMContext,
     screen: Screen,
+    force_new: bool = False,
 ) -> int:
     """Render the screen on the user's root message, or send a new one.
 
     Returns the resulting message_id (root). Updates FSM data root_message_id.
     If screen.next_state is set, transitions the FSM to that state after render.
+    If force_new is True, always send a new message and update root to it —
+    used at hand-off points (lead summary, opening admin detail) where the user
+    must visually see a fresh message.
 
     Reply-keyboard is NOT handled here — screens that need one are responsible
     for sending a separate prompt message after this call.
     """
     root_id = await get_root_message_id(state)
     result_id: int
-    if root_id is not None:
+    if not force_new and root_id is not None:
         try:
             await bot.edit_message_text(
                 chat_id=chat_id,

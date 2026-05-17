@@ -64,6 +64,9 @@ async def handle_my_leads(
             await callback.answer("Заявка не найдена.", show_alert=True)
             return
         await push(state, MY_LEAD_DETAIL_SCREEN_ID)
+        # Remember the open lead so the back-renderer can re-fetch it when the
+        # user returns from cancel_reason / confirm-repeat etc.
+        await state.update_data(my_current_lead_id=lead.id)
         stack = await get_stack(state)
         screen = render_my_lead_detail(content=content, lead=lead, stack=stack)
         await render_screen(

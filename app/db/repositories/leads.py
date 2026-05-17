@@ -20,7 +20,7 @@ class LeadRepository:
 
     def _lead_options(self) -> tuple:
         return (
-            selectinload(Lead.answers),
+            selectinload(Lead.answers).selectinload(LeadAnswer.question),
             selectinload(Lead.files),
             selectinload(Lead.comments).selectinload(LeadComment.admin),
             selectinload(Lead.category),

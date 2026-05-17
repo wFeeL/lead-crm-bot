@@ -3,8 +3,37 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.ui.back_registry import render_back
 from app.bot.ui.callbacks import NavCallback
-from app.bot.ui.navigation import go_home, pop
+from app.bot.ui.navigation import (
+    MAIN_MENU_SCREEN_ID,
+    get_stack,
+    go_home,
+    pop,
+)
+
+
+async def _render_main_menu(
+    *,
+    bot,
+    chat_id: int,
+    state: FSMContext,
+    content,
+    current_user,
+    session: AsyncSession,
+) -> None:
+    from app.bot.routers.user.menu import render_and_show_main_menu
+    from app.db.repositories.leads import LeadRepository
+
+    repo = LeadRepository(session)
+    leads_count = await repo.count_by_user(current_user.id)
+    await render_and_show_main_menu(
+        bot=bot,
+        chat_id=chat_id,
+        state=state,
+        content=content,
+        leads_count=leads_count,
+    )
 
 
 async def handle_nav(
@@ -17,12 +46,54 @@ async def handle_nav(
 ) -> None:
     """Universal navigation: back / home / cancel.
 
-    home and cancel re-render MAIN_MENU as the (existing) root. back pops the
-    stack — re-rendering of the now-top screen is the responsibility of the
-    feature handler that pushed it (Step 3+ will wire generic back-render).
+    - ``back``: pop the stack and re-render the previous screen via
+      :mod:`app.bot.ui.back_registry`. If no renderer is registered (or we are
+      already at the bottom), fall back to MAIN_MENU.
+    - ``home``: reset the stack to ``[main_menu]`` and re-render MAIN_MENU
+      (FSM data is preserved).
+    - ``cancel``: clear state + data, then re-render MAIN_MENU.
     """
     if callback_data.action == "back":
-        await pop(state)
+        new_top = await pop(state)
+        # No context for navigation — best-effort acknowledge.
+        if content is None or current_user is None or session is None:
+            await callback.answer()
+            return
+
+        # Already at MAIN_MENU as the bottom: nothing to pop further.
+        if new_top is None or new_top == MAIN_MENU_SCREEN_ID:
+            await _render_main_menu(
+                bot=callback.bot,
+                chat_id=callback.message.chat.id,
+                state=state,
+                content=content,
+                current_user=current_user,
+                session=session,
+            )
+            await callback.answer()
+            return
+
+        rendered = await render_back(
+            new_top,
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        if not rendered:
+            # Unknown screen — collapse to MAIN_MENU rather than leaving the
+            # user staring at a stale message.
+            await go_home(state)
+            await _render_main_menu(
+                bot=callback.bot,
+                chat_id=callback.message.chat.id,
+                state=state,
+                content=content,
+                current_user=current_user,
+                session=session,
+            )
         await callback.answer()
         return
 
@@ -34,17 +105,13 @@ async def handle_nav(
 
     # Render MAIN_MENU on home/cancel if we have context.
     if content is not None and current_user is not None and session is not None:
-        from app.bot.routers.user.menu import render_and_show_main_menu
-        from app.db.repositories.leads import LeadRepository
-
-        repo = LeadRepository(session)
-        leads_count = await repo.count_by_user(current_user.id)
-        await render_and_show_main_menu(
+        await _render_main_menu(
             bot=callback.bot,
             chat_id=callback.message.chat.id,
             state=state,
             content=content,
-            leads_count=leads_count,
+            current_user=current_user,
+            session=session,
         )
 
     await callback.answer()
@@ -54,3 +121,6 @@ def create_nav_router() -> Router:
     router = Router(name="nav")
     router.callback_query(NavCallback.filter())(handle_nav)
     return router
+
+
+__all__ = ["handle_nav", "create_nav_router", "get_stack"]

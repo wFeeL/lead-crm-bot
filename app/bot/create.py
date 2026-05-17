@@ -16,6 +16,7 @@ from app.bot.routers.user import lead_create, my_leads, start
 from app.bot.routers.user.faq import router as faq_router
 from app.bot.routers.user.menu import router as menu_router
 from app.bot.routers.user.support import router as support_router
+from app.bot.ui.back_renderers import register_all as register_back_renderers
 from app.bot.ui.handler import create_nav_router
 from app.core.config import Settings
 
@@ -38,6 +39,7 @@ def create_dispatcher(settings: Settings, redis: Redis | None = None) -> Dispatc
         else MemoryStorage()
     )
     dispatcher = Dispatcher(storage=storage)
+    register_back_renderers()
 
     for observer in (dispatcher.message, dispatcher.callback_query):
         observer.outer_middleware(DbSessionMiddleware())

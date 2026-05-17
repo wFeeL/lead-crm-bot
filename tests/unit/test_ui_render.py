@@ -104,6 +104,27 @@ async def test_render_applies_next_state(state: FSMContext):
     assert await state.get_state() == _S.target.state
 
 
+async def test_render_force_new_sends_fresh_message_even_with_root(state: FSMContext):
+    """force_new=True must always send and update root, never edit."""
+    await set_root_message_id(state, 100)
+    bot = MagicMock()
+    sent = MagicMock(message_id=999)
+    bot.send_message = AsyncMock(return_value=sent)
+    bot.edit_message_text = AsyncMock()
+
+    screen = Screen(
+        screen_id="confirm",
+        text="summary",
+        keyboard=InlineKeyboardMarkup(inline_keyboard=[]),
+    )
+    await render_screen(bot=bot, chat_id=42, state=state, screen=screen, force_new=True)
+
+    bot.edit_message_text.assert_not_called()
+    bot.send_message.assert_awaited_once()
+    data = await state.get_data()
+    assert data["root_message_id"] == 999
+
+
 async def test_render_no_next_state_keeps_state(state: FSMContext):
     bot = MagicMock()
     sent = MagicMock(message_id=42)

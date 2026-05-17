@@ -173,7 +173,9 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
         await on_pick_category(
             callback=_callback(),
             callback_data=LeadCategoryCallback(slug="telegram_bot"),
-            state=state, session=session, content=content,
+            state=state,
+            session=session,
+            content=content,
         )
         assert await state.get_state() == LeadFormState.answering_questions.state
 
@@ -182,7 +184,8 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
         for i in range(len(data["questions"])):
             await on_text_answer(
                 message=_message(_bot(), f"Ответ {i + 1}"),
-                state=state, content=content,
+                state=state,
+                content=content,
             )
 
         assert await state.get_state() == LeadFormState.uploading_files.state
@@ -191,14 +194,16 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
         await on_files_action(
             callback=_callback(),
             callback_data=LeadFilesCallback(action="continue"),
-            state=state, content=content,
+            state=state,
+            content=content,
         )
         assert await state.get_state() == LeadFormState.entering_contact.state
 
         # Enter contact.
         await on_contact(
             message=_message(_bot(), "+7 900 000 0000"),
-            state=state, content=content,
+            state=state,
+            content=content,
         )
         assert await state.get_state() == LeadFormState.confirming.state
 
@@ -206,7 +211,10 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
         await on_confirm_action(
             callback=_callback(),
             callback_data=LeadConfirmCallback(action="submit"),
-            state=state, session=session, current_user=user, content=content,
+            state=state,
+            session=session,
+            current_user=user,
+            content=content,
         )
 
     assert await state.get_state() is None
@@ -224,7 +232,10 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
     await handle_my_leads(
         callback=cb,
         callback_data=MyLeadsCallback(action="page", page=1),
-        state=state, content=content, session=session, current_user=user,
+        state=state,
+        content=content,
+        session=session,
+        current_user=user,
     )
     cb.bot.edit_message_text.assert_awaited()
     text = cb.bot.edit_message_text.await_args.kwargs["text"]
@@ -236,7 +247,10 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
     await handle_lead_detail_action(
         callback=cb2,
         callback_data=MyLeadDetailCallback(action="cancel", lead_id=lead.id),
-        state=state, content=content, session=session, current_user=user,
+        state=state,
+        content=content,
+        session=session,
+        current_user=user,
     )
     cb2.answer.assert_awaited()
     # Cancel-reason screen rendered.
@@ -252,7 +266,10 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
     await handle_cancel_reason(
         callback=cb3,
         callback_data=CancelReasonCallback(action="pick", lead_id=lead.id, index=0),
-        state=state, content=content, session=session, current_user=user,
+        state=state,
+        content=content,
+        session=session,
+        current_user=user,
     )
 
     refreshed = await repo.get(lead.id)
@@ -279,19 +296,23 @@ async def test_full_admin_journey_new_to_done(
         await on_admin_menu_action(
             callback=cb,
             callback_data=AdminMenuCallback(action="new"),
-            state=state, content=content, session=session, current_user=admin_user,
+            state=state,
+            content=content,
+            session=session,
+            current_user=admin_user,
         )
         cb.bot.edit_message_text.assert_awaited()
 
         # Open lead.
-        await state.update_data(
-            admin_filter={"status": "new", "hot": False, "label": "Новые"}
-        )
+        await state.update_data(admin_filter={"status": "new", "hot": False, "label": "Новые"})
         cb2 = _callback(chat_id=999)
         await on_admin_list_action(
             callback=cb2,
             callback_data=AdminLeadListCallback(action="open", lead_id=lead.id, page=1),
-            state=state, content=content, session=session, current_user=admin_user,
+            state=state,
+            content=content,
+            session=session,
+            current_user=admin_user,
         )
         data = await state.get_data()
         assert "admin_lead_detail" in data["nav_stack"]
@@ -303,7 +324,10 @@ async def test_full_admin_journey_new_to_done(
             callback_data=AdminDetailCallback(
                 action="set_status", lead_id=lead.id, value="in_progress"
             ),
-            state=state, content=content, session=session, current_user=admin_user,
+            state=state,
+            content=content,
+            session=session,
+            current_user=admin_user,
         )
         refreshed = await LeadRepository(session).get(lead.id)
         assert refreshed.status == "in_progress"
@@ -313,7 +337,10 @@ async def test_full_admin_journey_new_to_done(
         await on_admin_detail_action(
             callback=cb4,
             callback_data=AdminDetailCallback(action="set_status", lead_id=lead.id, value="done"),
-            state=state, content=content, session=session, current_user=admin_user,
+            state=state,
+            content=content,
+            session=session,
+            current_user=admin_user,
         )
         data2 = await state.get_data()
         assert "admin_close_reason" in data2["nav_stack"]
@@ -325,7 +352,10 @@ async def test_full_admin_journey_new_to_done(
             callback_data=AdminCloseReasonCallback(
                 action="pick", lead_id=lead.id, target_status="done", index=0
             ),
-            state=state, content=content, session=session, current_user=admin_user,
+            state=state,
+            content=content,
+            session=session,
+            current_user=admin_user,
         )
 
     done_lead = await LeadRepository(session).get(lead.id)
@@ -336,9 +366,7 @@ async def test_full_admin_journey_new_to_done(
 # ─── Test 3: repeat creates new lead with source='repeat' ────────────────────
 
 
-async def test_repeat_lead_creates_new_with_repeat_source(
-    content, session: AsyncSession, user
-):
+async def test_repeat_lead_creates_new_with_repeat_source(content, session: AsyncSession, user):
     """Clicking Repeat on MY_LEAD_DETAIL pre-fills confirm screen; submitting source=repeat."""
     from app.bot.routers.user.my_leads import handle_lead_detail_action as hda
 
@@ -353,7 +381,10 @@ async def test_repeat_lead_creates_new_with_repeat_source(
     await hda(
         callback=cb,
         callback_data=MyLeadDetailCallback(action="repeat", lead_id=original.id),
-        state=state, content=content, session=session, current_user=user,
+        state=state,
+        content=content,
+        session=session,
+        current_user=user,
     )
 
     assert await state.get_state() == LeadFormState.confirming.state
@@ -367,7 +398,10 @@ async def test_repeat_lead_creates_new_with_repeat_source(
         await on_confirm_action(
             callback=cb2,
             callback_data=LeadConfirmCallback(action="submit"),
-            state=state, session=session, current_user=user, content=content,
+            state=state,
+            session=session,
+            current_user=user,
+            content=content,
         )
 
     repo = LeadRepository(session)

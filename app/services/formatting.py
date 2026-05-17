@@ -12,13 +12,30 @@ def status_label(status: str) -> str:
     return f"{emoji} {title}"
 
 
+def _answer_label(answer) -> str:
+    """Prefer the full question text; fall back to the key for legacy answers."""
+    question = getattr(answer, "question", None)
+    question_text = getattr(question, "question_text", None) if question else None
+    return question_text or answer.key
+
+
+def _admin_label(admin) -> str:
+    if admin is None:
+        return "—"
+    name = (admin.first_name or "").strip()
+    username = f"@{admin.username}" if getattr(admin, "username", None) else ""
+    if name and username:
+        return f"{name} {username}"
+    return name or username or f"#{admin.id}"
+
+
 def _format_answers(lead: Lead) -> str:
     if not lead.answers:
         return "Ответы: нет"
     lines = ["Ответы:"]
     for answer in lead.answers:
-        value = answer.value_text or answer.value_json or "-"
-        lines.append(f"• {answer.key}: {value}")
+        value = answer.value_text or answer.value_json or "—"
+        lines.append(f"• {_answer_label(answer)}: {value}")
     return "\n".join(lines)
 
 
@@ -33,7 +50,8 @@ def _format_comments(lead: Lead, *, include_internal: bool) -> str:
     lines = ["Комментарии:"]
     for comment in comments:
         visibility = "внутренний" if comment.is_internal else "клиенту"
-        lines.append(f"• #{comment.admin_id} ({visibility}): {comment.text}")
+        author = _admin_label(getattr(comment, "admin", None))
+        lines.append(f"• {author} ({visibility}): {comment.text}")
     return "\n".join(lines)
 
 

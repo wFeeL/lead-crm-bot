@@ -28,6 +28,10 @@ def _fake_lead(
     contact_phone="@user",
     contact_username=None,
     category_title="Боты",
+    answers=None,
+    comments=None,
+    files=None,
+    user=None,
 ):
     return SimpleNamespace(
         id=lead_id,
@@ -42,6 +46,10 @@ def _fake_lead(
         contact_username=contact_username,
         category=SimpleNamespace(title=category_title),
         created_at=datetime(2026, 5, 17, 10, 0, 0, tzinfo=UTC),
+        answers=answers or [],
+        comments=comments or [],
+        files=files or [],
+        user=user,
     )
 
 
@@ -135,6 +143,39 @@ def test_render_admin_lead_detail_priority_row_marks_current():
                 prio_labels.append(btn.text)
     # One of the priority buttons should be marked with ✓
     assert any("✓" in lbl for lbl in prio_labels)
+
+
+def test_render_admin_lead_detail_shows_full_question_text_not_key():
+    """Bug fix: admin must see human-readable question text, never the English key."""
+    answer = SimpleNamespace(
+        key="biz_name",
+        value_text="ООО Ромашка",
+        value_json=None,
+        question=SimpleNamespace(question_text="Как называется ваш бизнес?"),
+    )
+    lead = _fake_lead(answers=[answer])
+    screen = render_admin_lead_detail(content=_content(), lead=lead, stack=STACK)
+    assert "Как называется ваш бизнес?" in screen.text
+    assert "ООО Ромашка" in screen.text
+    # The raw key must not leak into the rendered text.
+    assert "biz_name" not in screen.text
+
+
+def test_render_admin_lead_detail_shows_internal_comments():
+    """Bug fix: internal comments must be visible in admin detail."""
+    admin = SimpleNamespace(id=7, first_name="Иван", username="ivan_admin")
+    comment = SimpleNamespace(
+        id=1,
+        text="Клиент перезвонит после 18:00",
+        is_internal=True,
+        admin=admin,
+    )
+    lead = _fake_lead(comments=[comment])
+    screen = render_admin_lead_detail(content=_content(), lead=lead, stack=STACK)
+    assert "Комментарии" in screen.text
+    assert "Клиент перезвонит после 18:00" in screen.text
+    assert "внутренний" in screen.text
+    assert "Иван" in screen.text
 
 
 def test_admin_detail_callbacks_pack():

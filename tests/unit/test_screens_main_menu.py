@@ -17,7 +17,7 @@ def test_main_menu_renders_buttons():
     labels = [btn.text for row in screen.keyboard.inline_keyboard for btn in row]
     assert any("Оставить заявку" in lbl for lbl in labels)
     assert any("Мои заявки" in lbl for lbl in labels)
-    assert any("Связаться" in lbl for lbl in labels)
+    assert any("Менеджер" in lbl for lbl in labels)
     assert any("FAQ" in lbl for lbl in labels)
 
 

@@ -1,0 +1,354 @@
+"""Concrete back-renderers for every screen the user can stack onto.
+
+Each renderer:
+- reads any context it needs from FSM data (``admin_filter``, current lead id,
+  wizard answers, etc.) or from the DB via the session;
+- re-renders the screen as the new root (``pop`` already adjusted the nav stack
+  before we got here, so we MUST NOT ``push`` again);
+- adjusts the FSM state where the screen owns a state (wizard back rewinds the
+  user back into the right FSM state instead of leaving them mid-wizard with
+  the wrong UI).
+
+Call :func:`register_all` once at startup to install everything.
+"""
+
+from __future__ import annotations
+
+from aiogram.fsm.context import FSMContext
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.bot.screens.admin_assign_list import (
+    ADMIN_ASSIGN_LIST_SCREEN_ID,
+    render_admin_assign_list,
+)
+from app.bot.screens.admin_lead_detail import (
+    ADMIN_LEAD_DETAIL_SCREEN_ID,
+    render_admin_lead_detail,
+)
+from app.bot.screens.admin_lead_list import (
+    ADMIN_LEAD_LIST_SCREEN_ID,
+    render_admin_lead_list,
+)
+from app.bot.screens.admin_menu import ADMIN_MENU_SCREEN_ID, render_admin_menu
+from app.bot.screens.faq import FAQ_SCREEN_ID, render_faq
+from app.bot.screens.lead_category import (
+    LEAD_CATEGORY_SCREEN_ID,
+    render_lead_category,
+)
+from app.bot.screens.lead_confirm import (
+    LEAD_CONFIRM_SCREEN_ID,
+    render_lead_confirm,
+)
+from app.bot.screens.lead_contact import (
+    LEAD_CONTACT_PROMPT_SCREEN_ID,
+    make_contact_reply_keyboard,
+    render_lead_contact_prompt,
+)
+from app.bot.screens.lead_files import (
+    LEAD_UPLOAD_FILES_SCREEN_ID,
+    render_lead_upload_files,
+)
+from app.bot.screens.lead_question import (
+    LEAD_QUESTION_SCREEN_ID,
+    render_lead_question,
+)
+from app.bot.screens.main_menu import MAIN_MENU_SCREEN_ID, render_main_menu
+from app.bot.screens.my_leads import (
+    MY_LEAD_DETAIL_SCREEN_ID,
+    MY_LEADS_SCREEN_ID,
+    render_my_lead_detail,
+    render_my_leads,
+)
+from app.bot.screens.support import SUPPORT_SCREEN_ID, render_support
+from app.bot.states.lead import LeadFormState
+from app.bot.ui.back_registry import register_back
+from app.bot.ui.navigation import get_stack
+from app.bot.ui.render import render_screen
+from app.core.config import get_settings
+from app.db.repositories.forms import FormRepository
+from app.db.repositories.leads import LeadRepository
+from app.db.repositories.users import UserRepository
+
+
+async def _back_main_menu(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    repo = LeadRepository(session)
+    leads_count = await repo.count_by_user(current_user.id)
+    screen = render_main_menu(content=content, leads_count=leads_count)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_my_leads(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    repo = LeadRepository(session)
+    page_size = content.config.ui.page_size_my_leads
+    leads = await repo.list_by_user(current_user.id, limit=page_size, offset=0)
+    total = await repo.count_by_user(current_user.id)
+    stack = await get_stack(state)
+    screen = render_my_leads(content=content, leads=leads, page=1, total=total, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_my_lead_detail(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    lead_id = data.get("my_current_lead_id")
+    if lead_id is None:
+        await _back_my_leads(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    repo = LeadRepository(session)
+    lead = await repo.get(int(lead_id))
+    if lead is None or lead.user_id != current_user.id:
+        await _back_my_leads(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    stack = await get_stack(state)
+    screen = render_my_lead_detail(content=content, lead=lead, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_faq(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    stack = await get_stack(state)
+    screen = render_faq(content=content, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_support(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    stack = await get_stack(state)
+    screen = render_support(content=content, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_menu(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    repo = LeadRepository(session)
+    counts = await repo.status_counts()
+    hot = await repo.hot_count()
+    screen = render_admin_menu(
+        content=content,
+        status_counts=counts,
+        hot_count=hot,
+        company_name=content.brand.company_name,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_lead_list(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    af = data.get("admin_filter") or {}
+    status = af.get("status")
+    hot = bool(af.get("hot", False))
+    label = af.get("label", "📋 Заявки")
+    repo = LeadRepository(session)
+    page_size = content.config.ui.page_size_admin
+    leads = await repo.list_by_filter(status=status, hot=hot, limit=page_size, offset=0)
+    total = await repo.count_by_filter(status=status, hot=hot)
+    stack = await get_stack(state)
+    screen = render_admin_lead_list(
+        content=content,
+        leads=leads,
+        page=1,
+        total=total,
+        page_size=page_size,
+        filter_label=label,
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_lead_detail(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    lead_id = data.get("admin_current_lead_id")
+    if lead_id is None:
+        await _back_admin_lead_list(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    repo = LeadRepository(session)
+    lead = await repo.get(int(lead_id))
+    if lead is None:
+        await _back_admin_lead_list(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    stack = await get_stack(state)
+    screen = render_admin_lead_detail(content=content, lead=lead, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_assign_list(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    lead_id = data.get("admin_current_lead_id")
+    if lead_id is None:
+        await _back_admin_lead_list(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    repo = LeadRepository(session)
+    lead = await repo.get(int(lead_id))
+    if lead is None:
+        return
+    user_repo = UserRepository(session)
+    admins = await user_repo.list_admins()
+    page_size = content.config.ui.page_size_admin
+    stack = await get_stack(state)
+    screen = render_admin_assign_list(
+        content=content,
+        lead_id=int(lead_id),
+        current_admin_id=lead.assigned_admin_id if lead else None,
+        admins=admins[:page_size],
+        page=1,
+        total=len(admins),
+        page_size=page_size,
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_lead_category(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    """Returning to the category screen resets the wizard to its first step."""
+    repo = FormRepository(session)
+    categories = await repo.list_categories()
+    # Reset wizard state.
+    await state.set_state(LeadFormState.choosing_category)
+    await state.update_data(questions=[], question_index=0, answers=[], files=[])
+    stack = await get_stack(state)
+    screen = render_lead_category(content=content, categories=categories, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_lead_question(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    """Back into the question step: drop the last answer and re-show that question."""
+    data = await state.get_data()
+    questions = data.get("questions") or []
+    answers = data.get("answers") or []
+    if not questions:
+        await _back_lead_category(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    if answers:
+        answers.pop()
+    index = max(0, min(len(answers), len(questions) - 1))
+    await state.update_data(answers=answers, question_index=index)
+    await state.set_state(LeadFormState.answering_questions)
+    stack = await get_stack(state)
+    screen = render_lead_question(
+        content=content,
+        question=questions[index],
+        index=index,
+        total=len(questions),
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_lead_upload_files(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    files = data.get("files") or []
+    settings = get_settings()
+    await state.set_state(LeadFormState.uploading_files)
+    stack = await get_stack(state)
+    screen = render_lead_upload_files(
+        content=content,
+        files=files,
+        max_files=settings.max_files_per_lead,
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_lead_contact_prompt(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    await state.set_state(LeadFormState.entering_contact)
+    stack = await get_stack(state)
+    screen = render_lead_contact_prompt(content=content, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+    # Re-send the reply-keyboard so the user can tap "Send phone" again.
+    await bot.send_message(
+        chat_id=chat_id,
+        text="📞 Нажмите кнопку, чтобы поделиться телефоном, или напишите контакт текстом.",
+        reply_markup=make_contact_reply_keyboard(),
+    )
+
+
+async def _back_lead_confirm(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    await state.set_state(LeadFormState.confirming)
+    stack = await get_stack(state)
+    screen = render_lead_confirm(content=content, draft=data, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+def register_all() -> None:
+    """Install every back-renderer. Safe to call multiple times (overwrites)."""
+    register_back(MAIN_MENU_SCREEN_ID, _back_main_menu)
+    register_back(MY_LEADS_SCREEN_ID, _back_my_leads)
+    register_back(MY_LEAD_DETAIL_SCREEN_ID, _back_my_lead_detail)
+    register_back(FAQ_SCREEN_ID, _back_faq)
+    register_back(SUPPORT_SCREEN_ID, _back_support)
+    register_back(ADMIN_MENU_SCREEN_ID, _back_admin_menu)
+    register_back(ADMIN_LEAD_LIST_SCREEN_ID, _back_admin_lead_list)
+    register_back(ADMIN_LEAD_DETAIL_SCREEN_ID, _back_admin_lead_detail)
+    register_back(ADMIN_ASSIGN_LIST_SCREEN_ID, _back_admin_assign_list)
+    register_back(LEAD_CATEGORY_SCREEN_ID, _back_lead_category)
+    register_back(LEAD_QUESTION_SCREEN_ID, _back_lead_question)
+    register_back(LEAD_UPLOAD_FILES_SCREEN_ID, _back_lead_upload_files)
+    register_back(LEAD_CONTACT_PROMPT_SCREEN_ID, _back_lead_contact_prompt)
+    register_back(LEAD_CONFIRM_SCREEN_ID, _back_lead_confirm)

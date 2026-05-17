@@ -27,6 +27,8 @@ def render_main_menu(*, content: ContentService, leads_count: int = 0) -> Screen
 
     my_leads_label = f"📋 Мои заявки ({leads_count})" if leads_count else "📋 Мои заявки"
 
+    # Primary action ("Оставить заявку") on its own full-width row, secondary
+    # navigation grouped two-per-row for a calmer layout.
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -39,13 +41,11 @@ def render_main_menu(*, content: ContentService, leads_count: int = 0) -> Screen
                 InlineKeyboardButton(
                     text=my_leads_label,
                     callback_data=MainMenuCallback(action="my_leads").pack(),
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
-                    text="💬 Связаться с менеджером",
+                    text="💬 Менеджер",
                     callback_data=MainMenuCallback(action="support").pack(),
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(

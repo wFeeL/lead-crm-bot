@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.constants import LeadStatus
+from app.core.constants import LeadPriority, LeadStatus
 from app.db.base import Base, CreatedAtMixin, TimestampMixin
 
 
@@ -37,6 +37,13 @@ class Lead(TimestampMixin, Base):
     assigned_admin_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     source: Mapped[str] = mapped_column(String(64), default="telegram", nullable=False)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    close_reason: Mapped[str | None] = mapped_column(String(500))
+    priority: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default=LeadPriority.NORMAL.value,
+        server_default=LeadPriority.NORMAL.value,
+    )
 
     user = relationship("User", foreign_keys=[user_id], back_populates="leads")
     category = relationship("LeadCategory", back_populates="leads")

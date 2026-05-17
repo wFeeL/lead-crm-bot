@@ -34,6 +34,7 @@ from app.bot.screens.admin_lead_list import (
     render_admin_lead_list,
 )
 from app.bot.screens.admin_menu import ADMIN_MENU_SCREEN_ID, render_admin_menu
+from app.bot.screens.admin_stats import ADMIN_STATS_SCREEN_ID, render_admin_stats
 from app.bot.screens.faq import FAQ_SCREEN_ID, render_faq
 from app.bot.screens.lead_category import (
     LEAD_CATEGORY_SCREEN_ID,
@@ -76,6 +77,7 @@ from app.core.config import get_settings
 from app.db.repositories.forms import FormRepository
 from app.db.repositories.leads import LeadRepository
 from app.db.repositories.users import UserRepository
+from app.services.leads import LeadService
 
 
 async def _back_main_menu(
@@ -159,6 +161,16 @@ async def _back_admin_menu(
         hot_count=hot,
         company_name=content.brand.company_name,
     )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_stats(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    service = LeadService(session, get_settings())
+    stats = await service.daily_stats()
+    stack = await get_stack(state)
+    screen = render_admin_stats(stats=stats, stack=stack)
     await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
 
 
@@ -397,6 +409,7 @@ def register_all() -> None:
     register_back(FAQ_SCREEN_ID, _back_faq)
     register_back(SUPPORT_SCREEN_ID, _back_support)
     register_back(ADMIN_MENU_SCREEN_ID, _back_admin_menu)
+    register_back(ADMIN_STATS_SCREEN_ID, _back_admin_stats)
     register_back(ADMIN_LEAD_LIST_SCREEN_ID, _back_admin_lead_list)
     register_back(ADMIN_LEAD_DETAIL_SCREEN_ID, _back_admin_lead_detail)
     register_back(ADMIN_ASSIGN_LIST_SCREEN_ID, _back_admin_assign_list)

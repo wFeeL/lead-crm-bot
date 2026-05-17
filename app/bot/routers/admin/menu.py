@@ -39,6 +39,7 @@ from app.bot.screens.admin_menu import (
     AdminMenuCallback,
     render_admin_menu,
 )
+from app.bot.screens.admin_stats import ADMIN_STATS_SCREEN_ID, render_admin_stats
 from app.bot.states.admin_flow import AdminFlowState
 from app.bot.ui.navigation import clear_root_message_id, get_stack, go_home, pop, push
 from app.bot.ui.render import render_screen
@@ -115,9 +116,11 @@ async def on_admin_menu_action(
     if callback_data.action == "csv":
         service = LeadService(session, settings)
         csv = await service.export_csv()
+        # Document delivery is its own message; the admin_menu root stays put,
+        # so the admin can pick another action without needing a "back" button.
         await callback.message.answer_document(
             BufferedInputFile(csv.encode("utf-8-sig"), filename="leads.csv"),
-            caption="CSV-выгрузка",
+            caption="📤 CSV-выгрузка готова. Меню админа выше — продолжайте работу там.",
         )
         await callback.answer()
         return
@@ -125,15 +128,17 @@ async def on_admin_menu_action(
     if callback_data.action == "stats":
         service = LeadService(session, settings)
         stats = await service.daily_stats()
-        text = (
-            f"📊 Статистика дня ({stats.date})\n\n"
-            f"🆕 Новых: {stats.new}\n📞 Связались: —\n"
-            f"🛠 В работе: {stats.in_progress}\n⏳ Ждут: {stats.waiting}\n"
-            f"✅ Завершено: {stats.done}\n"
-            f"❌ Отклонено: {stats.rejected}\n🚫 Отменено: {stats.cancelled}\n\n"
-            f"Топ-категория: {stats.top_category or '—'}"
+        # Render as a proper screen so the nav-footer back-button returns the
+        # admin to the menu instead of leaving them with a dead-end message.
+        await push(state, ADMIN_STATS_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_admin_stats(stats=stats, stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
         )
-        await callback.message.answer(text)
         await callback.answer()
         return
 
@@ -679,7 +684,6 @@ async def on_admin_comment_text(
         screen=screen,
     )
     await message.answer("✅ Сохранено.")
-
 
 
 @router.callback_query(AdminLeadDeleteCallback.filter())

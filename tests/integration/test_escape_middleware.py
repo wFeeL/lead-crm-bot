@@ -60,7 +60,7 @@ async def test_escape_passthrough_for_normal_message(state: FSMContext):
     handler.assert_awaited_once()
 
 
-async def test_escape_passthrough_for_slash_cancel_without_fsm(state: FSMContext):
+async def test_escape_short_circuits_slash_cancel_without_active_fsm(state: FSMContext):
     """/cancel without active FSM still short-circuits (consistent behavior)."""
     handler = AsyncMock()
     msg = _message("/cancel")

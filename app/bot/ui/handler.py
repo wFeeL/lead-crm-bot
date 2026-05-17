@@ -36,7 +36,3 @@ def create_nav_router() -> Router:
         await callback.answer()
 
     return router
-
-
-# Module-level singleton for convenience imports.
-nav_router = create_nav_router()

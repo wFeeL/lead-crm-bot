@@ -9,14 +9,10 @@ ESCAPE_COMMANDS = ("/cancel", "/menu", "/start")
 
 
 class EscapeMiddleware(BaseMiddleware):
-    """Clears FSM state when the user issues /start, /menu, or /cancel.
+    """Clears FSM and routes /cancel /menu to MAIN_MENU; /start passes through.
 
-    /start passes through to the regular start handler (which renders MAIN_MENU).
-    /cancel and /menu short-circuit: downstream handlers are NOT invoked.
-
-    Step 2 will hook MAIN_MENU rendering directly into this middleware so /cancel
-    and /menu always land the user on a fresh root. For now the middleware only
-    manages FSM cleanup.
+    For /cancel and /menu the middleware short-circuits the chain after rendering
+    MAIN_MENU. /start passes through to the start handler which sends a fresh root.
     """
 
     async def __call__(
@@ -35,4 +31,26 @@ class EscapeMiddleware(BaseMiddleware):
 
         if event.text == "/start":
             return await handler(event, data)
+
+        # /cancel and /menu: render MAIN_MENU directly.
+        # Late imports here to avoid circular imports (menu router → middleware via dispatcher).
+        from app.bot.routers.user.menu import render_and_show_main_menu
+        from app.db.repositories.leads import LeadRepository
+
+        content = data.get("content")
+        current_user = data.get("current_user")
+        session = data.get("session")
+
+        if state is None or content is None or current_user is None or session is None:
+            return None  # Silent — can't render without context.
+
+        repo = LeadRepository(session)
+        leads_count = await repo.count_by_user(current_user.id)
+        await render_and_show_main_menu(
+            bot=event.bot,
+            chat_id=event.chat.id,
+            state=state,
+            content=content,
+            leads_count=leads_count,
+        )
         return None

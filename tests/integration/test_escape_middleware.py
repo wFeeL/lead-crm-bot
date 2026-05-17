@@ -30,18 +30,24 @@ async def test_escape_clears_fsm_on_slash_cancel(state: FSMContext):
     await state.set_state(_DummyState.waiting)
     handler = AsyncMock()
     msg = _message("/cancel")
+    # Pass state only (no content/user/session) — middleware short-circuits after FSM clear.
     await EscapeMiddleware()(handler, msg, {"state": state})
+    # State cleared; render hook gracefully no-ops without context.
     assert await state.get_state() is None
     handler.assert_not_awaited()
+    # Don't assert any bot send — middleware early-returns when context is incomplete.
 
 
 async def test_escape_clears_fsm_on_slash_menu(state: FSMContext):
     await state.set_state(_DummyState.waiting)
     handler = AsyncMock()
     msg = _message("/menu")
+    # Pass state only (no content/user/session) — middleware short-circuits after FSM clear.
     await EscapeMiddleware()(handler, msg, {"state": state})
+    # State cleared; render hook gracefully no-ops without context.
     assert await state.get_state() is None
     handler.assert_not_awaited()
+    # Don't assert any bot send — middleware early-returns when context is incomplete.
 
 
 async def test_escape_clears_fsm_on_slash_start_but_continues(state: FSMContext):
@@ -115,3 +121,5 @@ def test_dispatcher_includes_nav_router_before_feature_routers():
     assert included[0] in ("create_nav_router", "nav_router"), (
         f"Expected nav router first, got: {included}"
     )
+    # menu_router must also be included
+    assert "menu_router" in included, f"menu_router not found in included routers: {included}"

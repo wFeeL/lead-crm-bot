@@ -91,8 +91,7 @@ async def _ask_question(target: Message, state: FSMContext) -> None:
 def _build_confirmation_text(data: dict[str, Any]) -> str:
     answers = data.get("answers", [])
     answer_lines = "\n".join(
-        f"- {item['question_text']}: {item.get('value_text') or '-'}"
-        for item in answers
+        f"- {item['question_text']}: {item.get('value_text') or '-'}" for item in answers
     )
     return (
         "Проверьте заявку перед отправкой.\n\n"

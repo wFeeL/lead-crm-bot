@@ -52,9 +52,7 @@ async def handle_main_menu(
         leads = await repo.list_by_user(current_user.id, limit=page_size, offset=0)
         total = await repo.count_by_user(current_user.id)
         stack = await get_stack(state)
-        screen = render_my_leads(
-            content=content, leads=leads, page=1, total=total, stack=stack
-        )
+        screen = render_my_leads(content=content, leads=leads, page=1, total=total, stack=stack)
     elif callback_data.action == "support":
         await push(state, SUPPORT_SCREEN_ID)
         stack = await get_stack(state)

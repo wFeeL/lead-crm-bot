@@ -1,0 +1,7 @@
+company_name: "LeadBot Demo"
+manager_username: "@manager_demo"
+manager_phone: "+7 (000) 000-00-00"
+working_hours: "Пн-Пт 09:00–21:00"
+welcome_intro: "Здесь вы можете оставить заявку — мы свяжемся в течение рабочего дня."
+support_intro: "Опишите ваш вопрос — менеджер ответит лично."
+eta_response_hours: 24

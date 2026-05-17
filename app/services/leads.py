@@ -75,13 +75,24 @@ class LeadService:
     ) -> list[Lead]:
         return await self.repository.list_by_user(user_id, limit=limit, offset=offset)
 
-    async def change_status(self, *, lead_id: int, status: str, actor: User) -> Lead:
+    async def change_status(
+        self,
+        *,
+        lead_id: int,
+        status: str,
+        actor: User,
+        reason: str | None = None,
+    ) -> Lead:
         if not is_admin(actor.telegram_id, self.settings):
             raise PermissionDeniedError("admin privileges required")
         lead = await self.get_lead(lead_id)
         if lead.status == status:
             return lead
         assert_status_transition(lead.status, status)
+        if reason is not None:
+            lead.close_reason = reason
+            self.session.add(lead)
+            await self.session.flush()
         updated = await self.repository.update_status(
             lead=lead,
             status=status,
@@ -159,11 +170,7 @@ class LeadService:
         actor: User,
         reason: str | None = None,
     ) -> Lead:
-        """Cancel a lead by its owner.
-
-        `reason` is accepted for forward-compat but not yet persisted to the DB —
-        the close_reason column will be added in migration 0004 (Step 4a).
-        """
+        """Cancel a lead by its owner."""
         lead = await self.get_lead(lead_id)
         if lead.user_id != actor.id:
             raise PermissionDeniedError("cannot cancel another user's lead")
@@ -171,7 +178,10 @@ class LeadService:
             return lead
         if lead.status != LeadStatus.NEW:
             raise ValidationError("only new leads can be cancelled")
-        _ = reason  # will store in Step 4a
+        if reason is not None:
+            lead.close_reason = reason
+            self.session.add(lead)
+            await self.session.flush()
         return await self.repository.update_status(
             lead=lead,
             status=LeadStatus.CANCELLED,
@@ -196,6 +206,44 @@ class LeadService:
                 actor_user_id=admin.id,
             )
         return assigned
+
+    async def set_priority(self, *, lead_id: int, priority: str, actor: User) -> Lead:
+        from app.core.constants import LeadPriority
+
+        if not is_admin(actor.telegram_id, self.settings):
+            raise PermissionDeniedError("admin privileges required")
+        try:
+            LeadPriority(priority)
+        except ValueError as exc:
+            raise ValidationError("invalid priority") from exc
+        lead = await self.get_lead(lead_id)
+        if lead.priority == priority:
+            return lead
+        lead.priority = priority
+        self.session.add(lead)
+        await self.session.flush()
+        return lead
+
+    async def reassign(
+        self,
+        *,
+        lead_id: int,
+        new_admin: User | None,
+        actor: User,
+    ) -> Lead:
+        if not is_admin(actor.telegram_id, self.settings):
+            raise PermissionDeniedError("admin privileges required")
+        lead = await self.get_lead(lead_id)
+        prev_id = lead.assigned_admin_id
+        new_id = new_admin.id if new_admin else None
+        if prev_id == new_id:
+            return lead
+        if lead.status in {LeadStatus.DONE, LeadStatus.REJECTED, LeadStatus.CANCELLED}:
+            raise ValidationError("closed lead cannot be reassigned")
+        lead.assigned_admin_id = new_id
+        self.session.add(lead)
+        await self.session.flush()
+        return lead
 
     async def add_comment(
         self,

@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, CreatedAtMixin, TimestampMixin
@@ -13,7 +13,7 @@ class LeadCategory(CreatedAtMixin, Base):
     description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(default=0, nullable=False)
-    is_internal: Mapped[bool] = mapped_column(default=False, nullable=False)
+    is_internal: Mapped[bool] = mapped_column(default=False, server_default=false(), nullable=False)
     forms = relationship("LeadForm", back_populates="category", cascade="all, delete-orphan")
     leads = relationship("Lead", back_populates="category")
 

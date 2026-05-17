@@ -94,6 +94,8 @@ async def ensure_seed_data(session: AsyncSession, content: ContentBundle) -> Non
     repository = FormRepository(session)
     for index, category_cfg in enumerate(content.categories):
         category = await repository.get_category_by_slug(category_cfg.slug)
+        # Note: when category already exists (idempotent re-seed), is_internal is NOT
+        # refreshed from YAML. Toggling internal in YAML requires a manual DB update.
         if category is None:
             category = await repository.create_category(
                 slug=category_cfg.slug,

@@ -459,9 +459,7 @@ async def test_set_priority_admin_only(session) -> None:
 async def test_set_priority_success(session) -> None:
     service, _user, lead = await _make_lead(session, telegram_id=503)
     admin = await _make_admin(session)
-    updated = await service.set_priority(
-        lead_id=lead.id, priority=LeadPriority.HIGH, actor=admin
-    )
+    updated = await service.set_priority(lead_id=lead.id, priority=LeadPriority.HIGH, actor=admin)
     assert updated.priority == LeadPriority.HIGH
 
 

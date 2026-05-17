@@ -10,11 +10,19 @@ class UserRole(StrEnum):
 
 class LeadStatus(StrEnum):
     NEW = "new"
+    CONTACTED = "contacted"
     IN_PROGRESS = "in_progress"
     WAITING = "waiting"
     DONE = "done"
     REJECTED = "rejected"
     CANCELLED = "cancelled"
+
+
+class LeadPriority(StrEnum):
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
 
 
 class QuestionType(StrEnum):
@@ -46,9 +54,33 @@ class LeadEventType(StrEnum):
 
 
 ALLOWED_STATUS_TRANSITIONS: dict[LeadStatus, set[LeadStatus]] = {
-    LeadStatus.NEW: {LeadStatus.IN_PROGRESS, LeadStatus.REJECTED, LeadStatus.CANCELLED},
-    LeadStatus.IN_PROGRESS: {LeadStatus.WAITING, LeadStatus.DONE, LeadStatus.REJECTED},
-    LeadStatus.WAITING: {LeadStatus.IN_PROGRESS, LeadStatus.DONE, LeadStatus.REJECTED},
+    LeadStatus.NEW: {
+        LeadStatus.CONTACTED,
+        LeadStatus.IN_PROGRESS,
+        LeadStatus.REJECTED,
+        LeadStatus.CANCELLED,
+    },
+    LeadStatus.CONTACTED: {
+        LeadStatus.IN_PROGRESS,
+        LeadStatus.WAITING,
+        LeadStatus.DONE,
+        LeadStatus.REJECTED,
+        LeadStatus.CANCELLED,
+    },
+    LeadStatus.IN_PROGRESS: {
+        LeadStatus.CONTACTED,
+        LeadStatus.WAITING,
+        LeadStatus.DONE,
+        LeadStatus.REJECTED,
+        LeadStatus.CANCELLED,
+    },
+    LeadStatus.WAITING: {
+        LeadStatus.CONTACTED,
+        LeadStatus.IN_PROGRESS,
+        LeadStatus.DONE,
+        LeadStatus.REJECTED,
+        LeadStatus.CANCELLED,
+    },
     LeadStatus.DONE: set(),
     LeadStatus.REJECTED: set(),
     LeadStatus.CANCELLED: set(),
@@ -57,6 +89,7 @@ ALLOWED_STATUS_TRANSITIONS: dict[LeadStatus, set[LeadStatus]] = {
 
 STATUS_TITLES: dict[str, str] = {
     LeadStatus.NEW: "Новая",
+    LeadStatus.CONTACTED: "Связались",
     LeadStatus.IN_PROGRESS: "В работе",
     LeadStatus.WAITING: "Ждем клиента",
     LeadStatus.DONE: "Завершена",
@@ -67,6 +100,7 @@ STATUS_TITLES: dict[str, str] = {
 
 STATUS_EMOJIS: dict[str, str] = {
     LeadStatus.NEW: "🆕",
+    LeadStatus.CONTACTED: "📞",
     LeadStatus.IN_PROGRESS: "🛠",
     LeadStatus.WAITING: "⏳",
     LeadStatus.DONE: "✅",
@@ -75,5 +109,5 @@ STATUS_EMOJIS: dict[str, str] = {
 }
 
 
-ACTIVE_STATUSES = {LeadStatus.NEW, LeadStatus.IN_PROGRESS, LeadStatus.WAITING}
+ACTIVE_STATUSES = {LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.IN_PROGRESS, LeadStatus.WAITING}
 CLOSED_STATUSES = {LeadStatus.DONE, LeadStatus.REJECTED, LeadStatus.CANCELLED}

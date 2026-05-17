@@ -89,6 +89,68 @@ class LeadService:
         )
         return updated
 
+    async def build_draft_from_lead(self, *, lead_id: int, actor: User) -> dict:
+        """Build a FSM-draft dict from an existing lead for the 'repeat' flow."""
+        from uuid import uuid4
+
+        lead = await self.get_lead(lead_id)
+        if lead.user_id != actor.id:
+            raise PermissionDeniedError("cannot repeat another user's lead")
+
+        from app.db.repositories.forms import FormRepository
+
+        form_repo = FormRepository(self.session)
+        form = await form_repo.get_active_form(lead.category_id)
+        if form is None or not form.questions:
+            raise ValidationError("category form is unavailable")
+
+        questions: list[dict] = []
+        for q in form.questions:
+            options = q.options_json if isinstance(q.options_json, list) else []
+            questions.append(
+                {
+                    "id": q.id,
+                    "key": q.key,
+                    "text": q.question_text,
+                    "type": q.question_type,
+                    "required": q.is_required,
+                    "options": [
+                        str(o) if not isinstance(o, dict) else (o.get("label") or o.get("value") or "")
+                        for o in options
+                    ],
+                }
+            )
+
+        question_by_id = {q["id"]: q for q in questions}
+        answers: list[dict] = []
+        for a in lead.answers:
+            q = question_by_id.get(a.question_id)
+            answers.append(
+                {
+                    "question_id": a.question_id,
+                    "key": a.key,
+                    "question_text": (q or {}).get("text", a.key),
+                    "value_text": a.value_text or "",
+                }
+            )
+
+        return {
+            "submission_key": uuid4().hex,
+            "category_id": lead.category_id,
+            "category_title": lead.category.title if lead.category else "",
+            "category_slug": lead.category.slug if lead.category else "",
+            "questions": questions,
+            "question_index": len(answers),
+            "answers": answers,
+            "files": [],
+            "contact": lead.contact_phone or (
+                f"@{lead.contact_username}" if lead.contact_username else None
+            ),
+            "contact_phone": lead.contact_phone,
+            "contact_username": lead.contact_username,
+            "source": "repeat",
+        }
+
     async def cancel_by_client(self, *, lead_id: int, actor: User) -> Lead:
         lead = await self.get_lead(lead_id)
         if lead.user_id != actor.id:

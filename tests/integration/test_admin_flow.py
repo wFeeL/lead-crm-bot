@@ -81,9 +81,7 @@ async def client_user(session: AsyncSession, admin_user):
 async def _make_lead(session: AsyncSession, client_user, *, category_slug="telegram_bot"):
     """Helper: create a lead in the DB via LeadService."""
     cat = (
-        await session.execute(
-            select(LeadCategory).where(LeadCategory.slug == category_slug)
-        )
+        await session.execute(select(LeadCategory).where(LeadCategory.slug == category_slug))
     ).scalar_one()
     settings = get_settings()
     service = LeadService(session, settings)
@@ -184,11 +182,13 @@ async def test_admin_menu_callback_renders_lead_list(
 async def test_admin_list_open_renders_detail(content, state, session, admin_user, client_user):
     """Opening a lead from the list pushes admin_lead_detail onto the nav stack."""
     lead = await _make_lead(session, client_user)
-    await state.update_data({
-        "root_message_id": 999,
-        "nav_stack": ["admin_menu", "admin_lead_list"],
-        "admin_filter": {"status": "new", "hot": False, "label": "Новые"},
-    })
+    await state.update_data(
+        {
+            "root_message_id": 999,
+            "nav_stack": ["admin_menu", "admin_lead_list"],
+            "admin_filter": {"status": "new", "hot": False, "label": "Новые"},
+        }
+    )
 
     bot = _bot()
     cb = _callback(bot)
@@ -216,10 +216,12 @@ async def test_admin_detail_set_status_non_terminal_changes_status(
 ):
     """Setting 'contacted' (non-terminal) updates the lead status immediately."""
     lead = await _make_lead(session, client_user)
-    await state.update_data({
-        "root_message_id": 999,
-        "nav_stack": ["admin_menu", "admin_lead_list", "admin_lead_detail"],
-    })
+    await state.update_data(
+        {
+            "root_message_id": 999,
+            "nav_stack": ["admin_menu", "admin_lead_list", "admin_lead_detail"],
+        }
+    )
 
     bot = _bot()
     cb = _callback(bot)
@@ -255,19 +257,19 @@ async def test_admin_detail_set_status_rejected_pushes_close_reason(
 ):
     """Setting 'rejected' pushes admin_close_reason onto the nav stack without changing status."""
     lead = await _make_lead(session, client_user)
-    await state.update_data({
-        "root_message_id": 999,
-        "nav_stack": ["admin_menu", "admin_lead_list", "admin_lead_detail"],
-    })
+    await state.update_data(
+        {
+            "root_message_id": 999,
+            "nav_stack": ["admin_menu", "admin_lead_list", "admin_lead_detail"],
+        }
+    )
 
     bot = _bot()
     cb = _callback(bot)
 
     await on_admin_detail_action(
         callback=cb,
-        callback_data=AdminDetailCallback(
-            action="set_status", lead_id=lead.id, value="rejected"
-        ),
+        callback_data=AdminDetailCallback(action="set_status", lead_id=lead.id, value="rejected"),
         state=state,
         content=content,
         session=session,
@@ -292,15 +294,17 @@ async def test_admin_close_reason_pick_persists_reason_and_changes_status(
 ):
     """Picking a predefined close reason finalises the rejection with that reason."""
     lead = await _make_lead(session, client_user)
-    await state.update_data({
-        "root_message_id": 999,
-        "nav_stack": [
-            "admin_menu",
-            "admin_lead_list",
-            "admin_lead_detail",
-            "admin_close_reason",
-        ],
-    })
+    await state.update_data(
+        {
+            "root_message_id": 999,
+            "nav_stack": [
+                "admin_menu",
+                "admin_lead_list",
+                "admin_lead_detail",
+                "admin_close_reason",
+            ],
+        }
+    )
 
     bot = _bot()
     cb = _callback(bot)
@@ -341,19 +345,19 @@ async def test_admin_detail_set_priority_updates_priority(
 ):
     """Setting priority 'urgent' updates the lead priority in the DB."""
     lead = await _make_lead(session, client_user)
-    await state.update_data({
-        "root_message_id": 999,
-        "nav_stack": ["admin_lead_detail"],
-    })
+    await state.update_data(
+        {
+            "root_message_id": 999,
+            "nav_stack": ["admin_lead_detail"],
+        }
+    )
 
     bot = _bot()
     cb = _callback(bot)
 
     await on_admin_detail_action(
         callback=cb,
-        callback_data=AdminDetailCallback(
-            action="set_priority", lead_id=lead.id, value="urgent"
-        ),
+        callback_data=AdminDetailCallback(action="set_priority", lead_id=lead.id, value="urgent"),
         state=state,
         content=content,
         session=session,
@@ -377,10 +381,12 @@ async def test_admin_detail_assign_me_when_unassigned(
     lead = await _make_lead(session, client_user)
     assert lead.assigned_admin_id is None
 
-    await state.update_data({
-        "root_message_id": 999,
-        "nav_stack": ["admin_lead_detail"],
-    })
+    await state.update_data(
+        {
+            "root_message_id": 999,
+            "nav_stack": ["admin_lead_detail"],
+        }
+    )
 
     bot = _bot()
     cb = _callback(bot)

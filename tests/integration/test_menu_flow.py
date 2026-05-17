@@ -130,10 +130,11 @@ async def test_handle_main_menu_faq_button(content, state, session, current_user
     callback.answer.assert_awaited()
 
 
-async def test_handle_main_menu_create_lead_shows_step3_alert(
+async def test_handle_main_menu_create_lead_starts_flow(
     content, state, session, current_user
 ):
-    """MainMenuCallback(action='create_lead') calls callback.answer with show_alert=True."""
+    """MainMenuCallback(action='create_lead') pushes lead_category onto the nav stack."""
+    await state.update_data({"root_message_id": 999, "nav_stack": ["main_menu"]})
     bot = _bot_with_send()
     callback = _callback(bot)
 
@@ -146,8 +147,6 @@ async def test_handle_main_menu_create_lead_shows_step3_alert(
         current_user=current_user,
     )
 
+    stack = await get_stack(state)
+    assert "lead_category" in stack
     callback.answer.assert_awaited()
-    args, kwargs = callback.answer.await_args
-    text_passed = args[0] if args else kwargs.get("text", "")
-    assert kwargs.get("show_alert") is True
-    assert "Step 3" in text_passed or "Скоро" in text_passed

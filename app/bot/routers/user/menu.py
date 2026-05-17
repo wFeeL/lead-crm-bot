@@ -41,9 +41,16 @@ async def handle_main_menu(
     repo = LeadRepository(session)
 
     if callback_data.action == "create_lead":
-        # Step 3 will wire lead_create flow onto the Screen system. Until then,
-        # alert the user gracefully.
-        await callback.answer("Скоро будет (Step 3).", show_alert=True)
+        from app.bot.routers.user.lead_create import start_lead_create
+
+        await start_lead_create(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            session=session,
+            content=content,
+        )
+        await callback.answer()
         return
 
     if callback_data.action == "my_leads":

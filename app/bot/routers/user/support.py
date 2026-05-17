@@ -82,9 +82,7 @@ async def handle_support_message(
 
     answers = []
     if question is not None:
-        answers.append(
-            LeadAnswerInput(question_id=question.id, key=question.key, value_text=text)
-        )
+        answers.append(LeadAnswerInput(question_id=question.id, key=question.key, value_text=text))
 
     payload = LeadCreateInput(
         user_id=current_user.id,
@@ -109,9 +107,7 @@ async def handle_support_message(
         notifier = NotificationService(message.bot, get_settings())
         await notifier.notify_new_lead(lead)
 
-    await message.answer(
-        f"✉️ Спасибо! Ваше обращение №{lead.public_id} отправлено менеджеру."
-    )
+    await message.answer(f"✉️ Спасибо! Ваше обращение №{lead.public_id} отправлено менеджеру.")
     await state.set_state(None)
 
     repo = LeadRepository(session)

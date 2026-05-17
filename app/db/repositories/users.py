@@ -48,4 +48,3 @@ class UserRepository:
                 user.role = UserRole.ADMIN
         await self.session.flush()
         return user
-

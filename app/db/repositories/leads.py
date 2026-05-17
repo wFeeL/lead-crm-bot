@@ -103,9 +103,7 @@ class LeadRepository:
         from sqlalchemy import func, select
 
         result = await self.session.execute(
-            select(func.count())
-            .select_from(Lead)
-            .where(Lead.user_id == user_id)
+            select(func.count()).select_from(Lead).where(Lead.user_id == user_id)
         )
         return int(result.scalar_one())
 

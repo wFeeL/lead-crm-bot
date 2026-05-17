@@ -31,4 +31,3 @@ async def get_api_admin_user(
     )
     await session.commit()
     return user
-

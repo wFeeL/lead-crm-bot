@@ -130,9 +130,7 @@ async def test_handle_main_menu_faq_button(content, state, session, current_user
     callback.answer.assert_awaited()
 
 
-async def test_handle_main_menu_create_lead_starts_flow(
-    content, state, session, current_user
-):
+async def test_handle_main_menu_create_lead_starts_flow(content, state, session, current_user):
     """MainMenuCallback(action='create_lead') pushes lead_category onto the nav stack."""
     await state.update_data({"root_message_id": 999, "nav_stack": ["main_menu"]})
     bot = _bot_with_send()

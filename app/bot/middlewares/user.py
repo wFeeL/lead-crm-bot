@@ -32,4 +32,3 @@ class UserMiddleware(BaseMiddleware):
                 is_admin=is_admin(telegram_user.id, self.settings),
             )
         return await handler(event, data)
-

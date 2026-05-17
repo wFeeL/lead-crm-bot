@@ -6,15 +6,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage, StorageKey
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.bot.routers.user.support import handle_support_message
 from app.bot.states.support import SupportState
-from app.db.repositories.forms import FormRepository
 from app.db.repositories.leads import LeadRepository
 from app.db.repositories.users import UserRepository
 from app.services.content import ContentService
 from app.services.forms import ensure_seed_data
+from sqlalchemy.ext.asyncio import AsyncSession
 
 _CONTENT_DIR = Path(__file__).resolve().parents[2] / "app" / "bot" / "content" / "default"
 _BUNDLE = ContentService.load(_CONTENT_DIR)

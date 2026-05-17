@@ -115,7 +115,9 @@ class LeadService:
                     "type": q.question_type,
                     "required": q.is_required,
                     "options": [
-                        str(o) if not isinstance(o, dict) else (o.get("label") or o.get("value") or "")
+                        str(o)
+                        if not isinstance(o, dict)
+                        else (o.get("label") or o.get("value") or "")
                         for o in options
                     ],
                 }
@@ -143,15 +145,25 @@ class LeadService:
             "question_index": len(answers),
             "answers": answers,
             "files": [],
-            "contact": lead.contact_phone or (
-                f"@{lead.contact_username}" if lead.contact_username else None
-            ),
+            "contact": lead.contact_phone
+            or (f"@{lead.contact_username}" if lead.contact_username else None),
             "contact_phone": lead.contact_phone,
             "contact_username": lead.contact_username,
             "source": "repeat",
         }
 
-    async def cancel_by_client(self, *, lead_id: int, actor: User) -> Lead:
+    async def cancel_by_client(
+        self,
+        *,
+        lead_id: int,
+        actor: User,
+        reason: str | None = None,
+    ) -> Lead:
+        """Cancel a lead by its owner.
+
+        `reason` is accepted for forward-compat but not yet persisted to the DB —
+        the close_reason column will be added in migration 0004 (Step 4a).
+        """
         lead = await self.get_lead(lead_id)
         if lead.user_id != actor.id:
             raise PermissionDeniedError("cannot cancel another user's lead")
@@ -159,6 +171,7 @@ class LeadService:
             return lead
         if lead.status != LeadStatus.NEW:
             raise ValidationError("only new leads can be cancelled")
+        _ = reason  # will store in Step 4a
         return await self.repository.update_status(
             lead=lead,
             status=LeadStatus.CANCELLED,

@@ -28,4 +28,3 @@ async def require_admin_api_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid admin api token",
         )
-

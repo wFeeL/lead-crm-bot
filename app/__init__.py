@@ -1,2 +1,1 @@
 """Lead management bot application."""
-

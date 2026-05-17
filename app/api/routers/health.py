@@ -24,4 +24,3 @@ async def health_db(session: AsyncSession = Depends(get_db)) -> dict[str, str]:
 async def health_redis(redis: Redis = Depends(get_redis)) -> dict[str, str]:
     await redis.ping()
     return {"status": "ok"}
-

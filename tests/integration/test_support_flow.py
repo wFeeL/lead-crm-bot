@@ -132,9 +132,7 @@ async def test_support_message_empty_text_asks_again(content, state, session, cu
     assert await state.get_state() == SupportState.writing_message.state
 
 
-async def test_support_message_long_text_creates_lead(
-    content, state, session, current_user
-):
+async def test_support_message_long_text_creates_lead(content, state, session, current_user):
     """Long messages are accepted; a lead is created and state is cleared."""
     await state.set_state(SupportState.writing_message)
     await state.update_data(

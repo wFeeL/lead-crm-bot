@@ -20,4 +20,3 @@ class RateLimitExceededError(AppError):
 
 class ValidationError(AppError):
     pass
-

@@ -41,9 +41,7 @@ def format_lead_summary(lead: Lead) -> str:
     username = f"@{lead.user.username}" if lead.user and lead.user.username else "не указан"
     category = lead.category.title if lead.category else str(lead.category_id)
     assigned = (
-        f"#{lead.assigned_admin_id}"
-        if lead.assigned_admin_id is not None
-        else "не назначена"
+        f"#{lead.assigned_admin_id}" if lead.assigned_admin_id is not None else "не назначена"
     )
     return (
         f"{lead_title(lead)}\n\n"

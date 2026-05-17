@@ -1,2 +1,1 @@
 """Admin bot routers."""
-

@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage, StorageKey
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.bot.routers.user.my_leads import handle_lead_detail_action
 from app.bot.screens.my_leads import MyLeadDetailCallback
 from app.bot.states.lead import LeadFormState
@@ -20,6 +18,7 @@ from app.schemas.lead import LeadAnswerInput, LeadCreateInput
 from app.services.content import ContentService
 from app.services.forms import ensure_seed_data
 from app.services.leads import LeadService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 _CONTENT_DIR = Path(__file__).resolve().parents[2] / "app" / "bot" / "content" / "default"
 _BUNDLE = ContentService.load(_CONTENT_DIR)

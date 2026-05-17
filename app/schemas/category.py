@@ -23,4 +23,3 @@ class LeadQuestionRead(BaseModel):
     sort_order: int
     options_json: dict | list | None = None
     validation_json: dict | None = None
-

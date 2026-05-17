@@ -12,4 +12,3 @@ async def session():
     async with session_maker() as db_session:
         yield db_session
     await engine.dispose()
-

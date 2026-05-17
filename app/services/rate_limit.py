@@ -23,4 +23,3 @@ class RedisRateLimiter:
             raise
         except Exception as exc:
             logger.warning("redis_rate_limit_unavailable key=%s error=%s", key, exc)
-

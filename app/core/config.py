@@ -36,6 +36,8 @@ class Settings(BaseSettings):
 
     sentry_dsn: str | None = None
 
+    content_profile: str = "default"
+
     @field_validator("admin_ids", mode="before")
     @classmethod
     def parse_admin_ids(cls, value: str | int | list[int] | tuple[int, ...] | None) -> list[int]:

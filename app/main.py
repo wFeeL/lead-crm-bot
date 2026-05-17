@@ -17,15 +17,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     setup_logging()
     settings = get_settings()
     profile_dir = Path(__file__).parent / "bot" / "content" / settings.content_profile
-    app.state.content = ContentService(ContentService.load(profile_dir))
-    app.state.redis = Redis.from_url(settings.redis_url, decode_responses=True)
-    app.state.bot = create_bot(settings)
-    app.state.dispatcher = create_dispatcher(settings, app.state.redis)
     try:
+        app.state.content = ContentService(ContentService.load(profile_dir))
+        app.state.redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        app.state.bot = create_bot(settings)
+        app.state.dispatcher = create_dispatcher(settings, app.state.redis)
         yield
     finally:
-        await app.state.bot.session.close()
-        await app.state.redis.aclose()
+        bot = getattr(app.state, "bot", None)
+        if bot is not None:
+            await bot.session.close()
+        redis = getattr(app.state, "redis", None)
+        if redis is not None:
+            await redis.aclose()
 
 
 def create_app() -> FastAPI:

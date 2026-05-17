@@ -50,3 +50,28 @@ def test_fastapi_lifespan_loads_content():
     app = create_app()
     with TestClient(app):  # triggers lifespan startup
         assert app.state.content.brand.company_name == "LeadBot Demo"
+
+
+def test_fastapi_lifespan_surfaces_content_error(tmp_path, monkeypatch):
+    """If content profile is missing, the original FileNotFoundError must surface,
+    not be masked by a secondary AttributeError in the finally block."""
+    from app.main import create_app
+    from fastapi.testclient import TestClient
+
+    # Point CONTENT_PROFILE to a non-existent profile
+    monkeypatch.setenv("CONTENT_PROFILE", "definitely-does-not-exist-12345")
+
+    # Clear lru_cache on get_settings so the new env var is picked up
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+
+    app = create_app()
+    try:
+        with pytest.raises(FileNotFoundError, match="brand.yaml"):
+            with TestClient(app):
+                pass
+    finally:
+        # Restore for other tests
+        monkeypatch.delenv("CONTENT_PROFILE", raising=False)
+        get_settings.cache_clear()

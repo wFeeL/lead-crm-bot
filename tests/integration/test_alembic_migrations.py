@@ -59,4 +59,3 @@ def test_alembic_downgrade_removes_application_tables(tmp_path, monkeypatch) -> 
     finally:
         engine.dispose()
         get_settings.cache_clear()
-

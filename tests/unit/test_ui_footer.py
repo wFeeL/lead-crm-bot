@@ -1,5 +1,4 @@
 from aiogram.types import InlineKeyboardButton
-
 from app.bot.ui.footer import nav_footer
 
 

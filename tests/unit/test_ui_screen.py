@@ -2,12 +2,13 @@ import dataclasses
 
 import pytest
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
 from app.bot.ui.screen import Screen
 
 
 def test_screen_minimal_fields():
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="OK", callback_data="ok")]])
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="OK", callback_data="ok")]]
+    )
     s = Screen(screen_id="main_menu", text="Hi", keyboard=keyboard)
     assert s.screen_id == "main_menu"
     assert s.text == "Hi"

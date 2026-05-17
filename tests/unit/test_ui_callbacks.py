@@ -1,6 +1,6 @@
 import pytest
-
 from app.bot.ui.callbacks import NavCallback
+from pydantic import ValidationError  # noqa: F401 — used in pytest.raises
 
 
 def test_navcallback_pack_back():
@@ -22,5 +22,5 @@ def test_navcallback_unpack_roundtrip():
 
 
 def test_navcallback_rejects_unknown_action():
-    with pytest.raises(Exception):  # ValidationError or ValueError
+    with pytest.raises(ValidationError):
         NavCallback(action="teleport")

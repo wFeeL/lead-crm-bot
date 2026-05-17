@@ -1,7 +1,6 @@
 import pytest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage, StorageKey
-
 from app.bot.ui.navigation import (
     get_root_message_id,
     get_stack,

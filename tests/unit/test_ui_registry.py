@@ -1,6 +1,5 @@
 import pytest
 from aiogram.types import InlineKeyboardMarkup
-
 from app.bot.ui.registry import SCREENS, get_renderer, register_screen
 from app.bot.ui.screen import Screen
 
@@ -12,6 +11,7 @@ def _make_renderer(name: str):
             text="x",
             keyboard=InlineKeyboardMarkup(inline_keyboard=[]),
         )
+
     return renderer
 
 

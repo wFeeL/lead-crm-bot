@@ -5,7 +5,6 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage, StorageKey
 from aiogram.types import InlineKeyboardMarkup
-
 from app.bot.ui.navigation import set_root_message_id
 from app.bot.ui.render import render_screen
 from app.bot.ui.screen import Screen

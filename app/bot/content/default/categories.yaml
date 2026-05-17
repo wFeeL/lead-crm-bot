@@ -1,0 +1,55 @@
+- slug: telegram_bot
+  title: "Разработка бота"
+  description: "Telegram-боты и автоматизация"
+  questions:
+    - key: goal
+      text: "Что должен делать бот?"
+      type: long_text
+      required: true
+    - key: deadline
+      text: "Какие сроки?"
+      type: text
+      required: false
+    - key: budget
+      text: "Какой ориентировочный бюджет?"
+      type: text
+      required: false
+
+- slug: website
+  title: "Сайт / backend"
+  description: "Сайты, API и backend-разработка"
+  questions:
+    - key: project_type
+      text: "Какой проект нужен?"
+      type: text
+      required: true
+    - key: features
+      text: "Какие основные функции нужны?"
+      type: long_text
+      required: true
+    - key: deadline
+      text: "Есть ли дедлайн?"
+      type: text
+      required: false
+
+- slug: consultation
+  title: "Консультация"
+  description: "Разбор задачи и техническая консультация"
+  questions:
+    - key: topic
+      text: "По какой теме нужна консультация?"
+      type: text
+      required: true
+    - key: context
+      text: "Опишите контекст задачи."
+      type: long_text
+      required: false
+
+- slug: other
+  title: "Другое"
+  description: "Любая другая заявка"
+  questions:
+    - key: description
+      text: "Опишите задачу."
+      type: long_text
+      required: true

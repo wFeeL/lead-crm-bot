@@ -838,10 +838,14 @@ async def on_admin_lead_delete(
     # action == "confirm" — perform soft-delete and bounce admin back to the list.
     service = LeadService(session, settings)
     try:
-        await service.delete_lead(lead_id=callback_data.lead_id, actor=current_user)
+        deleted = await service.delete_lead(lead_id=callback_data.lead_id, actor=current_user)
     except AppError as exc:
         await callback.answer(str(exc), show_alert=True)
         return
+
+    # Fire side-channel notifications (webhook) so external systems learn the
+    # lead is gone. Email isn't fired here — admins already performed the action.
+    await NotificationService(callback.bot, settings).notify_lead_deleted(deleted)
 
     # Drop both the confirmation and the detail from the nav stack — the lead
     # is gone, returning to it makes no sense. Then re-render the list filter

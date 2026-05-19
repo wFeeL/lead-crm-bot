@@ -38,6 +38,26 @@ class Settings(BaseSettings):
 
     content_profile: str = "default"
 
+    # ---------- Outbound webhooks (Tier 3.A) ----------
+    # Comma-separated list of HTTPS endpoints to POST lead events to.
+    # Disable by leaving empty. Each endpoint receives the same payload.
+    webhook_urls: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    # If set, the JSON body is signed with HMAC-SHA256 and sent in the
+    # X-Webhook-Signature header so the receiver can verify authenticity.
+    webhook_secret: str | None = None
+    # Per-request timeout (seconds) and retry budget.
+    webhook_timeout_seconds: float = 10.0
+    webhook_max_retries: int = 3
+
+    @field_validator("webhook_urls", mode="before")
+    @classmethod
+    def parse_str_list(cls, value: str | list[str] | None) -> list[str]:
+        if value is None or value == "":
+            return []
+        if isinstance(value, list):
+            return [item.strip() for item in value if str(item).strip()]
+        return [item.strip() for item in str(value).split(",") if item.strip()]
+
     @field_validator("admin_ids", mode="before")
     @classmethod
     def parse_admin_ids(cls, value: str | int | list[int] | tuple[int, ...] | None) -> list[int]:

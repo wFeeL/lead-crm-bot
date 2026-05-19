@@ -109,6 +109,52 @@ yourdomain.com {
 
 The Caddyfile auto-provisions Let's Encrypt; no extra TLS work needed.
 
+## Integrations (optional)
+
+The template ships with two outbound integration channels, both disabled by
+default. Enable them per client by setting env vars — no code changes needed.
+
+### Outbound webhooks (CRM, Zapier, Make.com, n8n)
+
+Fires a signed JSON POST on every lead event. The receiver gets:
+
+```json
+{
+  "event": "lead.created",
+  "occurred_at": "2026-05-19T10:00:00+00:00",
+  "data": {
+    "id": 42, "public_id": "TG-000042", "status": "new", "priority": "normal",
+    "title": "...", "description": "...",
+    "contact_name": "...", "contact_phone": "...", "contact_username": "...",
+    "category": {"id": 1, "slug": "...", "title": "..."},
+    "user": {"telegram_id": 100, "username": "...", "first_name": "..."},
+    "answers": [{"key": "...", "question_text": "...", "value_text": "..."}],
+    "created_at": "...", "closed_at": null, "close_reason": null
+  }
+}
+```
+
+Events: `lead.created`, `lead.status_changed`, `lead.deleted`.
+
+Headers:
+- `X-Webhook-Event: lead.created`
+- `X-Webhook-Signature: sha256=<hex>` — present when `WEBHOOK_SECRET` is set.
+  Receiver should compute HMAC-SHA256 of the raw body with the same secret
+  and reject mismatches.
+
+Env:
+
+```env
+WEBHOOK_URLS=https://your-crm.example/leadbot,https://hooks.zapier.com/...
+WEBHOOK_SECRET=<long random — generate with `openssl rand -hex 32`>
+WEBHOOK_TIMEOUT_SECONDS=10
+WEBHOOK_MAX_RETRIES=3
+```
+
+Retries: 4xx terminates immediately; 5xx / network errors retry with
+exponential backoff (0.5s, 1s, 2s, ...) capped at `WEBHOOK_MAX_RETRIES`
+attempts. Failures are logged, never raised back into the bot.
+
 ## Monitoring
 
 - **Sentry**: set `SENTRY_DSN` in `.env`. Errors surface in your Sentry project.

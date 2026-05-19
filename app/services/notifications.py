@@ -5,6 +5,7 @@ from app.core.config import Settings
 from app.core.constants import STATUS_TITLES
 from app.core.logging import get_logger
 from app.db.models.lead import Lead
+from app.services.email import EmailService
 from app.services.formatting import format_lead_summary
 from app.services.webhooks import (
     EVENT_LEAD_CREATED,
@@ -30,10 +31,12 @@ class NotificationService:
         settings: Settings,
         *,
         webhooks: WebhookService | None = None,
+        email: EmailService | None = None,
     ) -> None:
         self.bot = bot
         self.settings = settings
         self._webhooks = webhooks
+        self._email = email
 
     @property
     def webhooks(self) -> WebhookService:
@@ -41,8 +44,14 @@ class NotificationService:
             self._webhooks = WebhookService(self.settings)
         return self._webhooks
 
+    @property
+    def email(self) -> EmailService:
+        if self._email is None:
+            self._email = EmailService(self.settings)
+        return self._email
+
     async def notify_new_lead(self, lead: Lead) -> None:
-        """Notify admins about a new lead (Telegram + optional webhook)."""
+        """Notify admins about a new lead (Telegram + optional email + webhook)."""
         from app.bot.screens.admin_lead_list import AdminLeadListCallback
 
         text = f"Новая заявка\n\n{format_lead_summary(lead)}"
@@ -74,8 +83,12 @@ class NotificationService:
                     exc,
                 )
 
-        # External integrations — no-op when WEBHOOK_URLS is empty. Failures are
-        # swallowed at the service layer so a downed receiver can't kill lead creation.
+        # Side channels — each one is a no-op if disabled. Failures are swallowed
+        # at the service layer so a downed SMTP / receiver can't kill lead creation.
+        try:
+            await self.email.send_new_lead(lead)
+        except Exception as exc:  # noqa: BLE001 — belt-and-braces
+            logger.warning("email_send_unexpected_error lead_id=%s error=%s", lead.id, exc)
         try:
             await self.webhooks.fire_lead_event(EVENT_LEAD_CREATED, lead)
         except Exception as exc:  # noqa: BLE001

@@ -49,7 +49,18 @@ class Settings(BaseSettings):
     webhook_timeout_seconds: float = 10.0
     webhook_max_retries: int = 3
 
-    @field_validator("webhook_urls", mode="before")
+    # ---------- Outbound email (Tier 3.B) ----------
+    # SMTP creds for outbound notifications. Empty SMTP_HOST disables email.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
+    # Comma-separated recipients for new-lead notifications.
+    smtp_admin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
+
+    @field_validator("webhook_urls", "smtp_admin_emails", mode="before")
     @classmethod
     def parse_str_list(cls, value: str | list[str] | None) -> list[str]:
         if value is None or value == "":

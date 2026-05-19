@@ -155,6 +155,27 @@ Retries: 4xx terminates immediately; 5xx / network errors retry with
 exponential backoff (0.5s, 1s, 2s, ...) capped at `WEBHOOK_MAX_RETRIES`
 attempts. Failures are logged, never raised back into the bot.
 
+### Email notifications
+
+Sends a plain-text email to admin recipients on every new lead. Disabled
+when `SMTP_HOST` is empty.
+
+```env
+SMTP_HOST=smtp.gmail.com         # or yandex/mail.ru/SendGrid/Mailgun
+SMTP_PORT=587
+SMTP_USER=bot@yourdomain.com
+SMTP_PASSWORD=<app password>
+SMTP_FROM=bot@yourdomain.com
+SMTP_STARTTLS=true
+SMTP_ADMIN_EMAILS=manager@yourdomain.com,owner@yourdomain.com
+```
+
+For Gmail, generate an [App Password](https://support.google.com/accounts/answer/185833)
+— don't use your account password directly.
+
+SMTP failures are logged and swallowed (a downed SMTP server can't kill
+lead creation).
+
 ## Monitoring
 
 - **Sentry**: set `SENTRY_DSN` in `.env`. Errors surface in your Sentry project.

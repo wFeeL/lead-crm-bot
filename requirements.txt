@@ -1,4 +1,5 @@
 aiogram>=3.20
+aiosmtplib>=3.0
 alembic>=1.13
 apscheduler>=3.10
 asyncpg>=0.29

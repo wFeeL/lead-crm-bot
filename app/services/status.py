@@ -10,7 +10,3 @@ def assert_status_transition(current: str, target: str) -> None:
         raise InvalidStatusTransitionError(f"unknown status: {current} -> {target}") from exc
     if target_status not in ALLOWED_STATUS_TRANSITIONS[current_status]:
         raise InvalidStatusTransitionError(f"cannot transition from {current} to {target}")
-
-
-def available_statuses(current: str) -> list[LeadStatus]:
-    return sorted(ALLOWED_STATUS_TRANSITIONS[LeadStatus(current)], key=lambda item: item.value)

@@ -114,6 +114,4 @@ STATUS_EMOJIS: dict[str, str] = {
 }
 
 
-ACTIVE_STATUSES = {LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.IN_PROGRESS, LeadStatus.WAITING}
-CLOSED_STATUSES = {LeadStatus.DONE, LeadStatus.REJECTED, LeadStatus.CANCELLED}
 HIDDEN_STATUSES = {LeadStatus.DELETED}

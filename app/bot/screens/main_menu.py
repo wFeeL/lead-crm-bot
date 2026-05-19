@@ -3,10 +3,11 @@ from typing import Literal
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from app.bot.ui.navigation import MAIN_MENU_SCREEN_ID
 from app.bot.ui.screen import Screen
 from app.services.content import ContentService
 
-MAIN_MENU_SCREEN_ID = "main_menu"
+__all__ = ["MAIN_MENU_SCREEN_ID", "MainMenuCallback", "render_main_menu"]
 
 
 class MainMenuCallback(CallbackData, prefix="menu"):

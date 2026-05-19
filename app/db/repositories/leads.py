@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, time
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, case, desc, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -110,7 +110,6 @@ class LeadRepository:
         return list(result.scalars().all())
 
     async def count_by_user(self, user_id: int) -> int:
-        from sqlalchemy import func, select
 
         result = await self.session.execute(
             select(func.count())
@@ -321,7 +320,6 @@ class LeadRepository:
 
     async def status_counts(self) -> dict[str, int]:
         """Total count per status across all non-hidden leads."""
-        from sqlalchemy import func, select
 
         result = await self.session.execute(
             select(Lead.status, func.count(Lead.id))
@@ -332,7 +330,6 @@ class LeadRepository:
 
     async def hot_count(self) -> int:
         """Count of non-terminal, non-deleted leads with priority high or urgent."""
-        from sqlalchemy import func, select
 
         result = await self.session.execute(
             select(func.count(Lead.id)).where(
@@ -355,7 +352,6 @@ class LeadRepository:
         offset: int = 0,
     ) -> list[Lead]:
         """List leads sorted by priority DESC then created_at DESC."""
-        from sqlalchemy import case, desc, select
 
         # priority sort: urgent > high > normal > low. Map to numeric.
         priority_order = case(
@@ -398,7 +394,6 @@ class LeadRepository:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
     ) -> int:
-        from sqlalchemy import func, select
 
         stmt = select(func.count(Lead.id)).where(Lead.status.not_in(self._hidden_status_values()))
         if status is not None:
@@ -432,7 +427,6 @@ class LeadRepository:
         - Otherwise: case-insensitive partial match across ``contact_phone``,
           ``contact_username``, ``User.username``, ``Lead.public_id``.
         """
-        from sqlalchemy import or_, select
 
         cleaned = query.strip().removeprefix("@").strip()
         if not cleaned:
@@ -466,7 +460,6 @@ class LeadRepository:
         return list(result.scalars().all())
 
     async def count_search(self, *, query: str) -> int:
-        from sqlalchemy import func, or_, select
 
         cleaned = query.strip().removeprefix("@").strip()
         if not cleaned:

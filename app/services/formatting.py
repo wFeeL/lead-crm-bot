@@ -73,22 +73,3 @@ def format_lead_summary(lead: Lead) -> str:
         f"{_format_answers(lead)}\n\n"
         f"{_format_comments(lead, include_internal=True)}"
     )
-
-
-def format_public_lead_line(lead: Lead) -> str:
-    category = lead.category.title if lead.category else str(lead.category_id)
-    return f"{lead.public_id or lead.id}: {category}, {status_label(lead.status)}"
-
-
-def format_user_lead_detail(lead: Lead) -> str:
-    category = lead.category.title if lead.category else str(lead.category_id)
-    return (
-        f"{lead_title(lead)}\n\n"
-        f"Статус: {status_label(lead.status)}\n"
-        f"Категория: {category}\n"
-        f"Контакт: {lead.contact_phone or lead.contact_username or 'не указан'}\n"
-        f"Описание: {lead.description}\n"
-        f"Файлов: {len(lead.files)}\n\n"
-        f"{_format_answers(lead)}\n\n"
-        f"{_format_comments(lead, include_internal=False)}"
-    )

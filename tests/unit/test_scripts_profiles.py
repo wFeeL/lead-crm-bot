@@ -4,7 +4,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from app.scripts import profiles as profiles_cli
 
 CONTENT_ROOT = Path(__file__).resolve().parents[2] / "app" / "bot" / "content"

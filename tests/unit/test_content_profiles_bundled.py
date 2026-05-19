@@ -9,7 +9,6 @@ text, so the niches can evolve without rewriting tests.
 from pathlib import Path
 
 import pytest
-
 from app.core.constants import LeadStatus
 from app.services.content import ContentService
 

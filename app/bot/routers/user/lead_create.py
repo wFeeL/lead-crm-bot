@@ -41,7 +41,7 @@ from app.bot.screens.lead_question import (
     render_lead_question,
 )
 from app.bot.states.lead import LeadFormState
-from app.bot.ui.navigation import get_stack, pop, push
+from app.bot.ui.navigation import MAIN_MENU_SCREEN_ID, get_stack, pop, push
 from app.bot.ui.render import render_screen
 from app.bot.ui.validate import validate_question_context
 from app.core.config import get_settings
@@ -617,11 +617,12 @@ async def _submit_lead(callback, state, session, current_user, content):
         return
     if getattr(lead, "created_now", True):
         notifier = NotificationService(callback.bot, get_settings())
-        # Pass None for reply_markup — admin keyboard rewrite is Step 5.
         await notifier.notify_new_lead(lead)
-    # Render LEAD_DONE in the root.
+    # Render LEAD_DONE in the root. Reset nav_stack to just [main_menu] so when
+    # the user proceeds (📋 Мои заявки / 📝 Ещё заявка / 🏠 Меню) the next
+    # screen has a real Back button instead of orphan navigation.
     await state.set_state(None)
-    await state.update_data(nav_stack=[])  # done — back to MAIN_MENU manually if user chooses.
+    await state.update_data(nav_stack=[MAIN_MENU_SCREEN_ID])
     screen = render_lead_done(content=content, public_id=lead.public_id)
     await render_screen(
         bot=callback.bot, chat_id=callback.message.chat.id, state=state, screen=screen

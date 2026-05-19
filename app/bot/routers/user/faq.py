@@ -18,6 +18,9 @@ async def handle_faq_select(
     content: ContentService,
 ) -> None:
     await push(state, FAQ_ANSWER_SCREEN_ID)
+    # Remember the open FAQ index so the back-renderer can re-paint this answer
+    # when the user returns from a nested screen.
+    await state.update_data(faq_current_index=callback_data.index)
     stack = await get_stack(state)
     screen = render_faq_answer(content=content, index=callback_data.index, stack=stack)
     await render_screen(

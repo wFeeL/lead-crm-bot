@@ -6,6 +6,7 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.bot.ui.footer import nav_footer
+from app.bot.ui.handler import NOOP_CALLBACK
 from app.bot.ui.screen import Screen
 from app.services.content import ContentService
 
@@ -20,7 +21,7 @@ class MyLeadsCallback(CallbackData, prefix="my_leads"):
 
 
 class MyLeadDetailCallback(CallbackData, prefix="my_lead"):
-    action: Literal["open", "cancel", "repeat"]
+    action: Literal["cancel", "repeat"]
     lead_id: int
 
 
@@ -71,7 +72,9 @@ def render_my_leads(
                 callback_data=MyLeadsCallback(action="page", page=page - 1).pack(),
             )
         )
-    pagination_row.append(InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop"))
+    pagination_row.append(
+        InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data=NOOP_CALLBACK)
+    )
     if page < total_pages:
         pagination_row.append(
             InlineKeyboardButton(

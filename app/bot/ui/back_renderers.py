@@ -21,6 +21,14 @@ from app.bot.screens.admin_assign_list import (
     ADMIN_ASSIGN_LIST_SCREEN_ID,
     render_admin_assign_list,
 )
+from app.bot.screens.admin_close_reason import (
+    ADMIN_CLOSE_REASON_SCREEN_ID,
+    render_admin_close_reason,
+)
+from app.bot.screens.admin_comment_prompt import (
+    ADMIN_COMMENT_PROMPT_SCREEN_ID,
+    render_admin_comment_prompt,
+)
 from app.bot.screens.admin_lead_delete_confirm import (
     ADMIN_LEAD_DELETE_CONFIRM_SCREEN_ID,
     render_admin_lead_delete_confirm,
@@ -47,7 +55,16 @@ from app.bot.screens.admin_search_prompt import (
     render_admin_search_prompt,
 )
 from app.bot.screens.admin_stats import ADMIN_STATS_SCREEN_ID, render_admin_stats
-from app.bot.screens.faq import FAQ_SCREEN_ID, render_faq
+from app.bot.screens.cancel_reason import (
+    MY_LEAD_CANCEL_REASON_SCREEN_ID,
+    render_cancel_reason,
+)
+from app.bot.screens.faq import (
+    FAQ_ANSWER_SCREEN_ID,
+    FAQ_SCREEN_ID,
+    render_faq,
+    render_faq_answer,
+)
 from app.bot.screens.lead_category import (
     LEAD_CATEGORY_SCREEN_ID,
     render_lead_category,
@@ -80,7 +97,12 @@ from app.bot.screens.my_leads import (
     render_my_lead_detail,
     render_my_leads,
 )
-from app.bot.screens.support import SUPPORT_SCREEN_ID, render_support
+from app.bot.screens.support import (
+    SUPPORT_SCREEN_ID,
+    SUPPORT_WRITING_SCREEN_ID,
+    render_support,
+    render_support_writing,
+)
 from app.bot.states.lead import LeadFormState
 from app.bot.ui.back_registry import register_back
 from app.bot.ui.navigation import get_stack
@@ -459,6 +481,135 @@ async def _back_lead_edit_answers(
     await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
 
 
+async def _back_faq_answer(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    """Backing out of a FAQ answer takes the user to the FAQ list, not main menu."""
+    data = await state.get_data()
+    index = data.get("faq_current_index")
+    if index is None:
+        await _back_faq(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    stack = await get_stack(state)
+    try:
+        screen = render_faq_answer(content=content, index=int(index), stack=stack)
+    except IndexError:
+        # FAQ shrank between sessions — fall back to the list.
+        await _back_faq(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_support_writing(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    stack = await get_stack(state)
+    screen = render_support_writing(content=content, stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_my_lead_cancel_reason(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    lead_id = data.get("cancel_target_lead_id") or data.get("my_current_lead_id")
+    if lead_id is None:
+        await _back_my_leads(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    stack = await get_stack(state)
+    screen = render_cancel_reason(content=content, lead_id=int(lead_id), stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_close_reason(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    lead_id = data.get("admin_pending_lead") or data.get("admin_current_lead_id")
+    target_status = data.get("admin_pending_status")
+    if lead_id is None or target_status is None:
+        await _back_admin_lead_detail(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    stack = await get_stack(state)
+    screen = render_admin_close_reason(
+        content=content,
+        lead_id=int(lead_id),
+        target_status=target_status,
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_comment_prompt(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    from app.bot.states.admin_flow import AdminFlowState
+
+    data = await state.get_data()
+    lead_id = data.get("admin_comment_lead_id") or data.get("admin_current_lead_id")
+    if lead_id is None:
+        await _back_admin_lead_detail(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    repo = LeadRepository(session)
+    lead = await repo.get(int(lead_id))
+    if lead is None:
+        await _back_admin_lead_detail(
+            bot=bot,
+            chat_id=chat_id,
+            state=state,
+            session=session,
+            content=content,
+            current_user=current_user,
+        )
+        return
+    # Default to internal — we lost the original flag, but the FSM state tells us.
+    current_state = await state.get_state()
+    is_internal = current_state != AdminFlowState.writing_client_reply.state
+    stack = await get_stack(state)
+    screen = render_admin_comment_prompt(
+        content=content,
+        lead_public_id=str(lead.public_id),
+        is_internal=is_internal,
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
 async def _back_lead_confirm(
     *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
 ) -> None:
@@ -491,3 +642,10 @@ def register_all() -> None:
     register_back(LEAD_CONTACT_PROMPT_SCREEN_ID, _back_lead_contact_prompt)
     register_back(LEAD_CONFIRM_SCREEN_ID, _back_lead_confirm)
     register_back(LEAD_EDIT_ANSWERS_SCREEN_ID, _back_lead_edit_answers)
+    # Previously-missing back-renderers — without these, ⬅ Назад dropped the
+    # user out of mid-flow back to MAIN_MENU.
+    register_back(FAQ_ANSWER_SCREEN_ID, _back_faq_answer)
+    register_back(SUPPORT_WRITING_SCREEN_ID, _back_support_writing)
+    register_back(MY_LEAD_CANCEL_REASON_SCREEN_ID, _back_my_lead_cancel_reason)
+    register_back(ADMIN_CLOSE_REASON_SCREEN_ID, _back_admin_close_reason)
+    register_back(ADMIN_COMMENT_PROMPT_SCREEN_ID, _back_admin_comment_prompt)

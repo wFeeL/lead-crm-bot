@@ -9,7 +9,11 @@ from app.bot.ui.screen import Screen
 from app.services.content import ContentService
 
 MY_LEAD_CANCEL_REASON_SCREEN_ID = "my_lead_cancel_reason"
-CUSTOM_REASON_LABEL = "Своя причина"
+
+# Convention: the LAST entry in each close_reasons list is the "custom" prompt.
+# Profiles can translate the label freely (e.g. "Своя причина" → "Другая причина" →
+# "Other reason") without breaking the branch that opens a free-text prompt.
+# Documented in docs/CUSTOMIZATION.md.
 
 
 class CancelReasonCallback(CallbackData, prefix="cancel_reason"):
@@ -24,13 +28,16 @@ def render_cancel_reason(
     lead_id: int,
     stack: Sequence[str],
 ) -> Screen:
-    reasons: list[str] = list(content.texts.close_reasons.cancelled or [CUSTOM_REASON_LABEL])
+    reasons: list[str] = list(content.texts.close_reasons.cancelled or [])
+    if not reasons:
+        # Safety net: ensure a custom-reason path exists even with empty YAML.
+        reasons = ["Своя причина"]
+    last_index = len(reasons) - 1
+
     extra: list[list[InlineKeyboardButton]] = []
     for i, reason in enumerate(reasons):
-        if reason == CUSTOM_REASON_LABEL:
-            cb = CancelReasonCallback(action="custom", lead_id=lead_id, index=i).pack()
-        else:
-            cb = CancelReasonCallback(action="pick", lead_id=lead_id, index=i).pack()
+        action = "custom" if i == last_index else "pick"
+        cb = CancelReasonCallback(action=action, lead_id=lead_id, index=i).pack()
         extra.append([InlineKeyboardButton(text=reason, callback_data=cb)])
 
     text = "🚫 <b>Отмена заявки</b>\n\nВыберите причину или укажите свою:"

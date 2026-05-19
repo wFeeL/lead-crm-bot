@@ -9,7 +9,9 @@ from app.bot.ui.screen import Screen
 from app.services.content import ContentService
 
 ADMIN_CLOSE_REASON_SCREEN_ID = "admin_close_reason"
-CUSTOM_REASON_LABEL = "Своя причина"
+
+# Convention: the LAST entry in each close_reasons list is the "custom" prompt.
+# See app/bot/screens/cancel_reason.py for the same convention on the client side.
 
 
 class AdminCloseReasonCallback(CallbackData, prefix="adm_close"):
@@ -27,12 +29,13 @@ def render_admin_close_reason(
     stack: Sequence[str],
 ) -> Screen:
     is_rejected = target_status == "rejected"
-    reasons = (
+    reasons = list(
         content.texts.close_reasons.rejected if is_rejected else content.texts.close_reasons.done
     )
+    last_index = len(reasons) - 1
     extra = []
     for i, reason in enumerate(reasons):
-        cb_action = "custom" if reason == CUSTOM_REASON_LABEL else "pick"
+        cb_action = "custom" if i == last_index else "pick"
         extra.append(
             [
                 InlineKeyboardButton(

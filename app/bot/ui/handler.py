@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,10 +7,14 @@ from app.bot.ui.back_registry import render_back
 from app.bot.ui.callbacks import NavCallback
 from app.bot.ui.navigation import (
     MAIN_MENU_SCREEN_ID,
-    get_stack,
     go_home,
     pop,
 )
+
+# Sentinel callback for inline buttons that are purely informational
+# (e.g. the "page X/Y" indicator on paginated lists). Handler just acks
+# the callback so Telegram's spinner clears immediately.
+NOOP_CALLBACK = "noop"
 
 
 async def _render_main_menu(
@@ -117,10 +121,16 @@ async def handle_nav(
     await callback.answer()
 
 
+async def handle_noop(callback: CallbackQuery) -> None:
+    """Ack a no-op callback (e.g. the page-indicator button on a paginated list)."""
+    await callback.answer()
+
+
 def create_nav_router() -> Router:
     router = Router(name="nav")
     router.callback_query(NavCallback.filter())(handle_nav)
+    router.callback_query(F.data == NOOP_CALLBACK)(handle_noop)
     return router
 
 
-__all__ = ["handle_nav", "create_nav_router", "get_stack"]
+__all__ = ["NOOP_CALLBACK", "create_nav_router", "handle_nav", "handle_noop"]

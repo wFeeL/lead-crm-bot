@@ -1,0 +1,41 @@
+main_menu:
+  title: "💅 Студия «Линия» — что хотите сделать?"
+
+support:
+  intro: "Напишите вопрос — администратор ответит в течение 10 минут."
+
+faq:
+  intro: "Частые вопросы о записи и услугах."
+
+statuses:
+  new:         { label: "Новая",         emoji: "🆕" }
+  contacted:   { label: "Подтверждаем",  emoji: "📞" }
+  in_progress: { label: "Записан",       emoji: "📅" }
+  waiting:     { label: "Ждём ответ",    emoji: "⏳" }
+  done:        { label: "Услуга оказана", emoji: "✅" }
+  rejected:    { label: "Отклонена",     emoji: "❌" }
+  cancelled:   { label: "Отменена",      emoji: "🚫" }
+  deleted:     { label: "Удалена",       emoji: "🗑" }
+
+priorities:
+  low:    { label: "Не срочно",      emoji: "🔵" }
+  normal: { label: "Обычно",         emoji: "⚪" }
+  high:   { label: "Сегодня-завтра", emoji: "🟠" }
+  urgent: { label: "Срочно",         emoji: "🔴" }
+
+close_reasons:
+  rejected:
+    - "Спам / тест"
+    - "Услуга не оказывается"
+    - "Клиент не отвечает"
+    - "Дубликат"
+    - "Своя причина"
+  done:
+    - "Клиент посетил салон"
+    - "Перенесли на другой визит"
+    - "Своя причина"
+  cancelled:
+    - "Передумал записываться"
+    - "Не подошло время"
+    - "Записался в другой салон"
+    - "Своя причина"

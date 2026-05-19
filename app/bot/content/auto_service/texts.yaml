@@ -1,0 +1,41 @@
+main_menu:
+  title: "🔧 Гараж 24 — выберите действие."
+
+support:
+  intro: "Опишите ситуацию — мастер свяжется в течение 15 минут."
+
+faq:
+  intro: "Частые вопросы об автосервисе."
+
+statuses:
+  new:         { label: "Новая",         emoji: "🆕" }
+  contacted:   { label: "Связались",     emoji: "📞" }
+  in_progress: { label: "В работе",      emoji: "🛠" }
+  waiting:     { label: "Ждём клиента",  emoji: "⏳" }
+  done:        { label: "Готово",        emoji: "✅" }
+  rejected:    { label: "Отклонена",     emoji: "❌" }
+  cancelled:   { label: "Отменена",      emoji: "🚫" }
+  deleted:     { label: "Удалена",       emoji: "🗑" }
+
+priorities:
+  low:    { label: "Низкий",   emoji: "🔵" }
+  normal: { label: "Обычный",  emoji: "⚪" }
+  high:   { label: "Высокий",  emoji: "🟠" }
+  urgent: { label: "Срочно",   emoji: "🔴" }
+
+close_reasons:
+  rejected:
+    - "Спам / нет автомобиля"
+    - "Не наш профиль"
+    - "Клиент не отвечает"
+    - "Дубликат"
+    - "Своя причина"
+  done:
+    - "Машина выдана клиенту"
+    - "Передано в кузовной"
+    - "Своя причина"
+  cancelled:
+    - "Передумал ремонтировать"
+    - "Решил сам"
+    - "Слишком долго ждать"
+    - "Своя причина"

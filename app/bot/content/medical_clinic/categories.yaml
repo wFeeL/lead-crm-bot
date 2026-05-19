@@ -1,0 +1,134 @@
+- slug: appointment
+  title: "👨‍⚕ Запись на приём"
+  description: "Запись к врачу нужного профиля"
+  questions:
+    - key: full_name
+      text: "ФИО пациента"
+      type: text
+      required: true
+    - key: birth_year
+      text: "Год рождения пациента"
+      type: number
+      required: true
+    - key: specialist
+      text: "К какому специалисту?"
+      type: choice
+      required: true
+      options:
+        - "Терапевт"
+        - "Педиатр"
+        - "ЛОР"
+        - "Кардиолог"
+        - "Невролог"
+        - "Гинеколог"
+        - "Хирург"
+        - "Гастроэнтеролог"
+        - "Не уверен — нужна консультация"
+    - key: symptoms
+      text: "Опишите жалобы или причину обращения."
+      type: long_text
+      required: false
+    - key: preferred_date
+      text: "Желаемая дата визита (ДД.ММ.ГГГГ)"
+      type: date
+      required: false
+
+- slug: lab_tests
+  title: "🧪 Анализы"
+  description: "Лабораторные исследования"
+  questions:
+    - key: full_name
+      text: "ФИО пациента"
+      type: text
+      required: true
+    - key: tests_needed
+      text: "Какие анализы нужно сдать? (можно перечислить через запятую или название чек-апа)"
+      type: long_text
+      required: true
+    - key: has_referral
+      text: "Есть направление от врача?"
+      type: choice
+      required: true
+      options:
+        - "Да, направление есть"
+        - "Нет, по своей инициативе"
+
+- slug: ultrasound
+  title: "🩻 УЗИ и диагностика"
+  description: "УЗИ, ЭКГ, функциональная диагностика"
+  questions:
+    - key: full_name
+      text: "ФИО пациента"
+      type: text
+      required: true
+    - key: study_kind
+      text: "Какое исследование?"
+      type: choice
+      required: true
+      options:
+        - "УЗИ органов брюшной полости"
+        - "УЗИ малого таза"
+        - "УЗИ щитовидной железы"
+        - "УЗИ сосудов"
+        - "ЭКГ"
+        - "Другое (укажите ниже)"
+    - key: study_other
+      text: "Если «Другое» — уточните"
+      type: text
+      required: false
+    - key: preferred_date
+      text: "Желаемая дата?"
+      type: date
+      required: false
+
+- slug: house_call
+  title: "🏠 Вызов врача на дом"
+  description: "Терапевт на дом, забор анализов"
+  questions:
+    - key: full_name
+      text: "ФИО пациента"
+      type: text
+      required: true
+    - key: address
+      text: "Адрес (улица, дом, квартира, домофон)"
+      type: long_text
+      required: true
+    - key: symptoms
+      text: "Симптомы / причина вызова"
+      type: long_text
+      required: true
+    - key: urgency
+      text: "Насколько срочно?"
+      type: choice
+      required: true
+      options:
+        - "Сегодня"
+        - "В течение 2-3 дней"
+        - "На неделе"
+
+- slug: certificate
+  title: "📄 Справки и документы"
+  description: "Медсправки, выписки, заключения"
+  questions:
+    - key: full_name
+      text: "ФИО пациента"
+      type: text
+      required: true
+    - key: cert_kind
+      text: "Какая справка нужна?"
+      type: text
+      required: true
+    - key: deadline
+      text: "К какому числу нужна?"
+      type: date
+      required: false
+
+- slug: support
+  title: "Связь с регистратурой"
+  description: "Обращение в поддержку"
+  internal: true
+  questions:
+    - key: message
+      text: "Опишите ваш вопрос"
+      type: long_text
+      required: true

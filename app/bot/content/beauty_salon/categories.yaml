@@ -1,0 +1,122 @@
+- slug: hair
+  title: "💇 Волосы"
+  description: "Стрижка, окрашивание, уход"
+  questions:
+    - key: service_kind
+      text: "Какая услуга нужна?"
+      type: choice
+      required: true
+      options:
+        - "Женская стрижка"
+        - "Мужская стрижка"
+        - "Окрашивание / тонирование"
+        - "Сложное окрашивание (балаяж, шатуш)"
+        - "Уход / SPA"
+    - key: hair_length
+      text: "Длина волос?"
+      type: choice
+      required: true
+      options:
+        - "Короткие"
+        - "До плеч"
+        - "Длинные"
+    - key: preferred_master
+      text: "Любимый мастер? (если нет — администратор подберёт)"
+      type: text
+      required: false
+    - key: preferred_date
+      text: "Удобная дата?"
+      type: date
+      required: false
+
+- slug: nails
+  title: "💅 Маникюр / педикюр"
+  description: "Маникюр, педикюр, наращивание, дизайн"
+  questions:
+    - key: service_kind
+      text: "Какая услуга?"
+      type: choice
+      required: true
+      options:
+        - "Маникюр"
+        - "Маникюр + покрытие"
+        - "Маникюр + наращивание"
+        - "Педикюр"
+        - "Маникюр + педикюр (комплекс)"
+    - key: design
+      text: "Дизайн или однотон?"
+      type: choice
+      required: false
+      options:
+        - "Однотон"
+        - "Френч / лунный"
+        - "Дизайн (опишите идею)"
+    - key: preferred_date
+      text: "Удобная дата?"
+      type: date
+      required: false
+
+- slug: brows_lashes
+  title: "👁 Брови и ресницы"
+  description: "Окрашивание, ламинирование, наращивание"
+  questions:
+    - key: service_kind
+      text: "Какая услуга?"
+      type: choice
+      required: true
+      options:
+        - "Коррекция и окрашивание бровей"
+        - "Ламинирование бровей"
+        - "Ламинирование ресниц"
+        - "Наращивание ресниц (классика)"
+        - "Наращивание ресниц (объём)"
+    - key: preferred_date
+      text: "Удобная дата?"
+      type: date
+      required: false
+
+- slug: massage
+  title: "💆 Массаж и SPA"
+  description: "Массаж, SPA-уход, обёртывания"
+  questions:
+    - key: service_kind
+      text: "Какой вид массажа?"
+      type: choice
+      required: true
+      options:
+        - "Классический"
+        - "Антицеллюлитный"
+        - "Спортивный"
+        - "Лимфодренаж"
+        - "Не уверена — посоветуйте"
+    - key: duration
+      text: "Желаемая длительность?"
+      type: choice
+      required: false
+      options:
+        - "30 мин"
+        - "60 мин"
+        - "90 мин"
+    - key: preferred_date
+      text: "Удобная дата?"
+      type: date
+      required: false
+
+- slug: consultation
+  title: "💬 Консультация"
+  description: "Подбор услуги, мастера, абонемента"
+  questions:
+    - key: topic
+      text: "По какой теме хотите проконсультироваться?"
+      type: long_text
+      required: true
+
+- slug: support
+  title: "Связь с администратором"
+  description: "Обращение в поддержку"
+  internal: true
+  questions:
+    - key: message
+      text: "Опишите ваш вопрос"
+      type: long_text
+      required: true

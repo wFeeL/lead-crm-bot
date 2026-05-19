@@ -1,0 +1,7 @@
+company_name: "АвтоСервис «Гараж 24»"
+manager_username: "@garage24_manager"
+manager_phone: "+7 (812) 555-12-34"
+working_hours: "Ежедневно 08:00–22:00"
+welcome_intro: "Оставьте заявку — подберём время, посчитаем стоимость и подготовим автомобиль."
+support_intro: "Опишите проблему с автомобилем — мастер ответит в течение 15 минут."
+eta_response_hours: 1

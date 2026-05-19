@@ -1,0 +1,112 @@
+- slug: maintenance
+  title: "🔧 ТО / Замена расходников"
+  description: "Плановое ТО, масло, фильтры, тормозные колодки"
+  questions:
+    - key: car_model
+      text: "Марка, модель и год выпуска?"
+      type: text
+      required: true
+    - key: mileage
+      text: "Текущий пробег (км)?"
+      type: number
+      required: true
+    - key: service_kind
+      text: "Что нужно сделать?"
+      type: choice
+      required: true
+      options:
+        - "Полное ТО"
+        - "Замена масла"
+        - "Замена колодок"
+        - "Замена ремня / цепи ГРМ"
+        - "Не уверен — посоветуйте"
+    - key: preferred_date
+      text: "Удобная дата (ДД.ММ.ГГГГ)?"
+      type: date
+      required: false
+
+- slug: repair
+  title: "🛠 Ремонт"
+  description: "Диагностика и ремонт по симптомам"
+  questions:
+    - key: car_model
+      text: "Марка, модель и год выпуска?"
+      type: text
+      required: true
+    - key: symptoms
+      text: "Что не так? Опишите симптомы (звуки, поведение, ошибки)."
+      type: long_text
+      required: true
+    - key: severity
+      text: "Машина на ходу?"
+      type: choice
+      required: true
+      options:
+        - "Да, доеду сам"
+        - "Едет, но с трудом"
+        - "Не заводится / стоит — нужен эвакуатор"
+
+- slug: tires
+  title: "⚙ Шиномонтаж"
+  description: "Шиномонтаж, балансировка, ремонт шин"
+  questions:
+    - key: car_model
+      text: "Марка и модель?"
+      type: text
+      required: true
+    - key: wheel_size
+      text: "Размер колёс (например R17)?"
+      type: text
+      required: true
+    - key: service_kind
+      text: "Какая услуга?"
+      type: choice
+      required: true
+      options:
+        - "Сезонная переобувка"
+        - "Балансировка"
+        - "Ремонт прокола"
+        - "Хранение шин"
+
+- slug: bodywork
+  title: "🚗 Кузовной ремонт"
+  description: "Покраска, рихтовка, полировка"
+  questions:
+    - key: car_model
+      text: "Марка, модель и год выпуска?"
+      type: text
+      required: true
+    - key: damage_description
+      text: "Опишите повреждения и пришлите фото на следующем шаге."
+      type: long_text
+      required: true
+    - key: insurance
+      text: "Ремонт по КАСКО?"
+      type: choice
+      required: true
+      options:
+        - "Да, по страховке"
+        - "Нет, за свой счёт"
+
+- slug: other
+  title: "❓ Другое"
+  description: "Любая другая заявка"
+  questions:
+    - key: car_model
+      text: "Марка, модель и год выпуска?"
+      type: text
+      required: false
+    - key: description
+      text: "Опишите задачу."
+      type: long_text
+      required: true
+
+- slug: support
+  title: "Связь с менеджером"
+  description: "Обращение в поддержку"
+  internal: true
+  questions:
+    - key: message
+      text: "Опишите ваш вопрос"
+      type: long_text
+      required: true

@@ -1,0 +1,7 @@
+limits:
+  max_leads_per_10_minutes: 3
+  max_files_per_lead: 8
+  max_file_size_mb: 25
+ui:
+  page_size_my_leads: 5
+  page_size_admin: 8

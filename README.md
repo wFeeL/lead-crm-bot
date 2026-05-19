@@ -111,6 +111,7 @@ backups.
 
 ## Documentation
 
+- [`docs/DELIVERY_PLAYBOOK.md`](docs/DELIVERY_PLAYBOOK.md) — **selling and shipping the template** (брифы, тарифы, чек-листы по нишам, поддержка).
 - [`docs/CUSTOMIZATION.md`](docs/CUSTOMIZATION.md) — adapt for a new client.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — codebase map and main flows.
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — production deployment guide.

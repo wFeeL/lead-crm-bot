@@ -73,8 +73,11 @@ close_reasons:
   `done`, `rejected`, `cancelled`, `deleted`). The bundled tests enforce this.
 - Status labels are what the client sees in "Мои заявки". Rephrase to fit the
   domain (e.g. salon: "Подтверждаем" / "Записан" / "Услуга оказана").
-- Each `close_reasons` list always ends with **"Своя причина"** — it triggers
-  the free-text custom-reason prompt.
+- Each `close_reasons` list MUST end with a **"custom" entry** — the last
+  string in the list, whatever it's called, opens a free-text prompt. Rename
+  it freely for the niche ("Своя причина" → "Другая причина" → "Other reason");
+  the bot detects it by **position (last)**, not by label, so localisation
+  works out of the box.
 
 ### `faq.yaml` — FAQ entries
 

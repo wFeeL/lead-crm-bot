@@ -105,7 +105,7 @@ helper for nested string templates in `texts.yaml`.
   - `UserRepository`, `FormRepository`.
 - **Migrations** in `migrations/versions/` (Alembic):
   - `0001_initial` — base tables.
-  - `0002_telegram_id_bigint` — telegram_id widened.
+  - `0002_add_lead_submission_key` — idempotency key for lead creation.
   - `0003_add_category_is_internal` — `categories.is_internal`.
   - `0004_status_close_priority` — added CONTACTED, close_reason, priority.
   - `0005_indexes_and_cascades` — hot-path indexes + ON DELETE rules.
@@ -135,7 +135,7 @@ the DB for audit.
   SQLAlchemy session (SQLite for speed, but model code is dialect-agnostic
   so PG passes too — verified by `make prod-up`).
 
-Run `make test` — 299 tests, ~6 seconds.
+Run `make test` — 389 tests, ~6 seconds.
 
 ## File-loading order at startup
 

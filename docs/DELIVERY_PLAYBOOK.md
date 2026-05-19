@@ -242,7 +242,7 @@ make prod-up
 Перед тем как сказать клиенту «запускаем»:
 
 - [ ] `make validate-profile PROFILE=<client>` — без ошибок.
-- [ ] `make test` — 299/299 pass.
+- [ ] `make test` — 389/389 pass.
 - [ ] В YAML проверены:
     - [ ] `brand.company_name` совпадает с фактическим названием.
     - [ ] `manager_username` и `manager_phone` — корректные.

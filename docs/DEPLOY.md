@@ -47,7 +47,6 @@ The minimum that MUST be set in `.env` for prod:
 | `POSTGRES_PASSWORD`  | `<strong password>`                                      | Prod compose refuses to start without this         |
 | `DATABASE_URL`       | `postgresql+asyncpg://postgres:<pass>@postgres:5432/leadbot` | Must match POSTGRES_* values                  |
 | `CONTENT_PROFILE`    | `auto_service`                                           | Which YAML profile to load                         |
-| `APP_ENV`            | `prod`                                                   | Tells the app it's running in production           |
 | `APP_DEBUG`          | `false`                                                  | Disables verbose logs                              |
 | `DROP_PENDING_UPDATES` | `true`                                                 | Skip messages queued while the bot was down        |
 
@@ -85,16 +84,20 @@ Update workflow keeps client YAML untouched — only the code rebuilds.
 
 ## Webhook mode (optional)
 
-Polling works out of the box and is the recommended default. If you must use
-webhook mode (e.g. high update volume or shared hosting):
+Polling works out of the box and is the recommended default. If you need to
+receive Telegram updates via a webhook (high volume or a network where polling
+is restricted), the bot ships with the FastAPI endpoint
+`/webhook/telegram` that validates `BOT_WEBHOOK_SECRET`:
 
-1. Set `BOT_MODE=webhook` in `.env`.
-2. Set `BOT_WEBHOOK_URL=https://yourdomain.com/webhook/telegram`.
-3. Set `BOT_WEBHOOK_SECRET=<random>`.
-4. Configure nginx / Caddy to proxy `/webhook/telegram` → `127.0.0.1:8000`.
-5. Restart: `make prod-up`.
+1. Set `BOT_WEBHOOK_SECRET=<random>` in `.env`.
+2. Configure nginx / Caddy to proxy `https://yourdomain.com/webhook/telegram`
+   → `127.0.0.1:8000`.
+3. Call Telegram's `setWebhook` with the URL + secret token once.
+4. Switch `app/bot_main.py` from `start_polling` to webhook-mode startup
+   (one-line code change; the dispatcher itself stays the same).
 
-The FastAPI app already exposes the webhook endpoint and validates the secret.
+The default `bot_main.py` uses long-polling; webhook startup is a small
+customisation, not a config flip.
 
 ## TLS / reverse proxy (Caddy snippet)
 
@@ -178,11 +181,14 @@ lead creation).
 
 ## Monitoring
 
-- **Sentry**: set `SENTRY_DSN` in `.env`. Errors surface in your Sentry project.
 - **Healthchecks**: API exposes `GET /healthz` (returns 200 OK on success).
-  Wire it to UptimeRobot / Better Uptime for an SMS alert.
+  Wire it to UptimeRobot / Better Uptime / Healthchecks.io for an SMS or
+  Telegram alert.
 - **Logs**: `make prod-logs` for the bot, `docker compose -f
   docker-compose.prod.yml logs api` for the API.
+- **Error tracking** (Sentry, Rollbar): not wired by default. Add
+  `sentry-sdk[fastapi]` to `requirements.txt` and `sentry_sdk.init(...)`
+  in `app/main.py` / `app/bot_main.py` if you want it.
 
 ## Troubleshooting
 

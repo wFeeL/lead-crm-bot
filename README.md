@@ -13,7 +13,7 @@ clients. Switch niche by editing YAML — no Python changes required.
 - **Admin panel inside the bot.** Filters, statuses (8), priorities (4),
   comments (internal & to client), reassignment, soft-delete, CSV, daily stats.
 - **Robust by default.** Rate limiting, FSM defenses, escape commands,
-  PostgreSQL migrations (8), 299 tests passing, ruff-clean.
+  PostgreSQL migrations (5), 389 tests passing, ruff-clean.
 
 ## Stack
 
@@ -122,7 +122,7 @@ backups.
 
 ```bash
 make help              # list every target
-make test              # run 299 tests
+make test              # run 389 tests
 make lint              # ruff check + format --check
 make fix               # auto-fix ruff issues + reformat
 make migrate           # alembic upgrade head

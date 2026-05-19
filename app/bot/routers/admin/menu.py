@@ -34,6 +34,10 @@ from app.bot.screens.admin_lead_list import (
     AdminLeadListCallback,
     render_admin_lead_list,
 )
+from app.bot.screens.admin_lead_timeline import (
+    ADMIN_LEAD_TIMELINE_SCREEN_ID,
+    render_admin_lead_timeline,
+)
 from app.bot.screens.admin_menu import (
     ADMIN_MENU_SCREEN_ID,
     AdminMenuCallback,
@@ -475,6 +479,29 @@ async def on_admin_detail_action(
             screen=screen,
         )
         await callback.answer("Назначено на вас.")
+        return
+
+    if callback_data.action == "timeline":
+        lead = await repo.get(callback_data.lead_id)
+        if lead is None:
+            await callback.answer("Не найдено.", show_alert=True)
+            return
+        events = await repo.list_events(lead_id=lead.id)
+        await push(state, ADMIN_LEAD_TIMELINE_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_admin_lead_timeline(
+            content=content,
+            public_id=str(lead.public_id),
+            events=events,
+            stack=stack,
+        )
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
+        await callback.answer()
         return
 
     if callback_data.action == "delete":

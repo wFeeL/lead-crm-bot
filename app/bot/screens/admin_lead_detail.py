@@ -28,6 +28,7 @@ class AdminDetailCallback(CallbackData, prefix="adm_det"):
         "assign",
         "assign_me",
         "delete",
+        "timeline",
     ]
     lead_id: int
     value: str = ""  # For set_status / set_priority
@@ -210,6 +211,16 @@ def render_admin_lead_detail(
         )
     )
     extra.append(assignment_row)
+
+    # --- Read-only audit log: opens the timeline screen with every LeadEvent.
+    extra.append(
+        [
+            InlineKeyboardButton(
+                text="📜 История",
+                callback_data=AdminDetailCallback(action="timeline", lead_id=lead.id).pack(),
+            )
+        ]
+    )
 
     # --- Danger zone: soft-delete on its own row, visually separated by the
     # 🗑 prefix from regular actions. Telegram has no real button colors, so

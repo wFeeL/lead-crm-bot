@@ -497,6 +497,22 @@ class LeadRepository:
         result = await self.session.execute(stmt)
         return int(result.scalar_one())
 
+    async def list_events(
+        self,
+        *,
+        lead_id: int,
+        limit: int = 50,
+    ) -> list[LeadEvent]:
+        """Return events for a lead in chronological (oldest-first) order, with actor loaded."""
+        result = await self.session.execute(
+            select(LeadEvent)
+            .options(selectinload(LeadEvent.actor))
+            .where(LeadEvent.lead_id == lead_id)
+            .order_by(LeadEvent.created_at.asc(), LeadEvent.id.asc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def export_rows(self) -> list[tuple]:
         result = await self.session.execute(
             select(

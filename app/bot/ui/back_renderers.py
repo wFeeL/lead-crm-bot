@@ -34,6 +34,14 @@ from app.bot.screens.admin_lead_list import (
     render_admin_lead_list,
 )
 from app.bot.screens.admin_menu import ADMIN_MENU_SCREEN_ID, render_admin_menu
+from app.bot.screens.admin_period_picker import (
+    ADMIN_PERIOD_PICKER_SCREEN_ID,
+    render_admin_period_picker,
+)
+from app.bot.screens.admin_search_prompt import (
+    ADMIN_SEARCH_PROMPT_SCREEN_ID,
+    render_admin_search_prompt,
+)
 from app.bot.screens.admin_stats import ADMIN_STATS_SCREEN_ID, render_admin_stats
 from app.bot.screens.faq import FAQ_SCREEN_ID, render_faq
 from app.bot.screens.lead_category import (
@@ -161,6 +169,24 @@ async def _back_admin_menu(
         hot_count=hot,
         company_name=content.brand.company_name,
     )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_search_prompt(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    stack = await get_stack(state)
+    screen = render_admin_search_prompt(stack=stack)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+async def _back_admin_period_picker(
+    *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
+) -> None:
+    data = await state.get_data()
+    current_period = (data.get("admin_filter") or {}).get("period")
+    stack = await get_stack(state)
+    screen = render_admin_period_picker(current_period=current_period, stack=stack)
     await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
 
 
@@ -410,6 +436,8 @@ def register_all() -> None:
     register_back(SUPPORT_SCREEN_ID, _back_support)
     register_back(ADMIN_MENU_SCREEN_ID, _back_admin_menu)
     register_back(ADMIN_STATS_SCREEN_ID, _back_admin_stats)
+    register_back(ADMIN_SEARCH_PROMPT_SCREEN_ID, _back_admin_search_prompt)
+    register_back(ADMIN_PERIOD_PICKER_SCREEN_ID, _back_admin_period_picker)
     register_back(ADMIN_LEAD_LIST_SCREEN_ID, _back_admin_lead_list)
     register_back(ADMIN_LEAD_DETAIL_SCREEN_ID, _back_admin_lead_detail)
     register_back(ADMIN_ASSIGN_LIST_SCREEN_ID, _back_admin_assign_list)

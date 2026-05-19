@@ -10,7 +10,18 @@ ADMIN_MENU_SCREEN_ID = "admin_menu"
 
 
 class AdminMenuCallback(CallbackData, prefix="adm_menu"):
-    action: Literal["new", "contacted", "in_progress", "waiting", "all", "hot", "csv", "stats"]
+    action: Literal[
+        "new",
+        "contacted",
+        "in_progress",
+        "waiting",
+        "all",
+        "hot",
+        "csv",
+        "stats",
+        "search",
+        "period",
+    ]
 
 
 def render_admin_menu(
@@ -39,6 +50,7 @@ def render_admin_menu(
             [_btn("🆕 Новые", "new"), _btn("📞 Связались", "contacted")],
             [_btn("🛠 В работе", "in_progress"), _btn("⏳ Ждут", "waiting")],
             [_btn("🔥 Срочные", "hot"), _btn("📋 Все", "all")],
+            [_btn("🔎 Поиск", "search"), _btn("📅 Период", "period")],
             [_btn("📤 CSV", "csv"), _btn("📊 Статистика дня", "stats")],
         ]
     )

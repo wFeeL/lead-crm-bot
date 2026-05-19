@@ -349,6 +349,8 @@ class LeadRepository:
         status: str | None = None,
         priority: str | None = None,
         hot: bool = False,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
         limit: int = 5,
         offset: int = 0,
     ) -> list[Lead]:
@@ -377,6 +379,10 @@ class LeadRepository:
                 Lead.priority.in_(("high", "urgent")),
                 Lead.status.not_in(("done", "rejected", "cancelled")),
             )
+        if date_from is not None:
+            stmt = stmt.where(Lead.created_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Lead.created_at <= date_to)
         stmt = (
             stmt.order_by(desc(priority_order), desc(Lead.created_at)).limit(limit).offset(offset)
         )
@@ -389,6 +395,8 @@ class LeadRepository:
         status: str | None = None,
         priority: str | None = None,
         hot: bool = False,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
     ) -> int:
         from sqlalchemy import func, select
 
@@ -401,6 +409,90 @@ class LeadRepository:
             stmt = stmt.where(
                 Lead.priority.in_(("high", "urgent")),
                 Lead.status.not_in(("done", "rejected", "cancelled")),
+            )
+        if date_from is not None:
+            stmt = stmt.where(Lead.created_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Lead.created_at <= date_to)
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one())
+
+    async def search(
+        self,
+        *,
+        query: str,
+        limit: int = 5,
+        offset: int = 0,
+    ) -> list[Lead]:
+        """Search across phone / username / contact / public_id / telegram_id.
+
+        Matching rules:
+        - Digits-only query: tries ``User.telegram_id ==``, partial match against
+          ``contact_phone`` (digits-only on both sides), and ``public_id``.
+        - Otherwise: case-insensitive partial match across ``contact_phone``,
+          ``contact_username``, ``User.username``, ``Lead.public_id``.
+        """
+        from sqlalchemy import or_, select
+
+        cleaned = query.strip().removeprefix("@").strip()
+        if not cleaned:
+            return []
+        pattern = f"%{cleaned}%"
+        stmt = (
+            select(Lead)
+            .options(*self._lead_options())
+            .outerjoin(User, Lead.user_id == User.id)
+            .where(Lead.status.not_in(self._hidden_status_values()))
+        )
+        if cleaned.isdigit():
+            stmt = stmt.where(
+                or_(
+                    User.telegram_id == int(cleaned),
+                    Lead.contact_phone.ilike(pattern),
+                    Lead.public_id.ilike(pattern),
+                )
+            )
+        else:
+            stmt = stmt.where(
+                or_(
+                    Lead.contact_phone.ilike(pattern),
+                    Lead.contact_username.ilike(pattern),
+                    User.username.ilike(pattern),
+                    Lead.public_id.ilike(pattern),
+                )
+            )
+        stmt = stmt.order_by(Lead.created_at.desc()).limit(limit).offset(offset)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def count_search(self, *, query: str) -> int:
+        from sqlalchemy import func, or_, select
+
+        cleaned = query.strip().removeprefix("@").strip()
+        if not cleaned:
+            return 0
+        pattern = f"%{cleaned}%"
+        stmt = (
+            select(func.count(Lead.id))
+            .outerjoin(User, Lead.user_id == User.id)
+            .where(Lead.status.not_in(self._hidden_status_values()))
+        )
+        if cleaned.isdigit():
+            stmt = stmt.where(
+                or_(
+                    User.telegram_id == int(cleaned),
+                    Lead.contact_phone.ilike(pattern),
+                    Lead.public_id.ilike(pattern),
+                )
+            )
+        else:
+            stmt = stmt.where(
+                or_(
+                    Lead.contact_phone.ilike(pattern),
+                    Lead.contact_username.ilike(pattern),
+                    User.username.ilike(pattern),
+                    Lead.public_id.ilike(pattern),
+                )
             )
         result = await self.session.execute(stmt)
         return int(result.scalar_one())

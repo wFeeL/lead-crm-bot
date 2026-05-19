@@ -39,6 +39,15 @@ from app.bot.screens.admin_menu import (
     AdminMenuCallback,
     render_admin_menu,
 )
+from app.bot.screens.admin_period_picker import (
+    ADMIN_PERIOD_PICKER_SCREEN_ID,
+    AdminPeriodCallback,
+    render_admin_period_picker,
+)
+from app.bot.screens.admin_search_prompt import (
+    ADMIN_SEARCH_PROMPT_SCREEN_ID,
+    render_admin_search_prompt,
+)
 from app.bot.screens.admin_stats import ADMIN_STATS_SCREEN_ID, render_admin_stats
 from app.bot.states.admin_flow import AdminFlowState
 from app.bot.ui.navigation import clear_root_message_id, get_stack, go_home, pop, push
@@ -52,6 +61,7 @@ from app.db.repositories.users import UserRepository
 from app.services.content import ContentService
 from app.services.leads import LeadService
 from app.services.notifications import NotificationService
+from app.services.period import period_label, resolve_period
 
 router = Router(name="admin_menu")
 
@@ -142,6 +152,36 @@ async def on_admin_menu_action(
         await callback.answer()
         return
 
+    if callback_data.action == "search":
+        # Drop any stale search query so the new prompt is fresh.
+        await state.update_data(admin_search_query=None)
+        await push(state, ADMIN_SEARCH_PROMPT_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_admin_search_prompt(stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
+        await callback.answer()
+        return
+
+    if callback_data.action == "period":
+        data = await state.get_data()
+        current_period = (data.get("admin_filter") or {}).get("period")
+        await push(state, ADMIN_PERIOD_PICKER_SCREEN_ID)
+        stack = await get_stack(state)
+        screen = render_admin_period_picker(current_period=current_period, stack=stack)
+        await render_screen(
+            bot=callback.bot,
+            chat_id=callback.message.chat.id,
+            state=state,
+            screen=screen,
+        )
+        await callback.answer()
+        return
+
     # All other actions are filtered lead lists.
     filter_label = {
         "new": "🆕 Новые",
@@ -155,6 +195,10 @@ async def on_admin_menu_action(
     is_hot = callback_data.action == "hot"
     status_filter = None if callback_data.action in ("all", "hot") else callback_data.action
 
+    # Preserve the existing period filter across status switches.
+    data = await state.get_data()
+    period = (data.get("admin_filter") or {}).get("period")
+
     await _show_lead_list(
         bot=callback.bot,
         chat_id=callback.message.chat.id,
@@ -163,27 +207,61 @@ async def on_admin_menu_action(
         session=session,
         status=status_filter,
         hot=is_hot,
+        period=period,
         page=1,
         filter_label=filter_label,
     )
     await callback.answer()
 
 
+def _label_with_period(base: str, period: str | None) -> str:
+    """Append the period suffix to the list title (e.g. '🆕 Новые · Неделя')."""
+    if period in (None, "all"):
+        return base
+    return f"{base} · {period_label(period)}"
+
+
 async def _show_lead_list(  # noqa: PLR0913
-    *, bot, chat_id, state, content, session, status, hot, page, filter_label
+    *,
+    bot,
+    chat_id,
+    state,
+    content,
+    session,
+    status,
+    hot,
+    period,
+    page,
+    filter_label,
 ):
     repo = LeadRepository(session)
     page_size = content.config.ui.page_size_admin
+    date_from, date_to = resolve_period(period)
     leads = await repo.list_by_filter(
         status=status,
         hot=hot,
+        date_from=date_from,
+        date_to=date_to,
         limit=page_size,
         offset=(page - 1) * page_size,
     )
-    total = await repo.count_by_filter(status=status, hot=hot)
+    total = await repo.count_by_filter(
+        status=status,
+        hot=hot,
+        date_from=date_from,
+        date_to=date_to,
+    )
     await push(state, ADMIN_LEAD_LIST_SCREEN_ID)
-    # Stash filter in FSM data for pagination roundtrips.
-    await state.update_data(admin_filter={"status": status, "hot": hot, "label": filter_label})
+    label = _label_with_period(filter_label, period)
+    # Stash filter in FSM data for pagination roundtrips and back-renderers.
+    await state.update_data(
+        admin_filter={
+            "status": status,
+            "hot": hot,
+            "period": period,
+            "label": filter_label,  # base label without period suffix
+        }
+    )
     stack = await get_stack(state)
     screen = render_admin_lead_list(
         content=content,
@@ -191,7 +269,7 @@ async def _show_lead_list(  # noqa: PLR0913
         page=page,
         total=total,
         page_size=page_size,
-        filter_label=filter_label,
+        filter_label=label,
         stack=stack,
     )
     await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
@@ -214,17 +292,30 @@ async def on_admin_list_action(
     if callback_data.action == "page":
         data = await state.get_data()
         af = data.get("admin_filter") or {}
-        await _show_lead_list(
-            bot=callback.bot,
-            chat_id=callback.message.chat.id,
-            state=state,
-            content=content,
-            session=session,
-            status=af.get("status"),
-            hot=af.get("hot", False),
-            page=callback_data.page,
-            filter_label=af.get("label", "Заявки"),
-        )
+        if af.get("query"):
+            # Search results paginate through the search results, not the regular filter.
+            await _show_search_results(
+                bot=callback.bot,
+                chat_id=callback.message.chat.id,
+                state=state,
+                content=content,
+                session=session,
+                query=af["query"],
+                page=callback_data.page,
+            )
+        else:
+            await _show_lead_list(
+                bot=callback.bot,
+                chat_id=callback.message.chat.id,
+                state=state,
+                content=content,
+                session=session,
+                status=af.get("status"),
+                hot=af.get("hot", False),
+                period=af.get("period"),
+                page=callback_data.page,
+                filter_label=af.get("label", "Заявки"),
+            )
     elif callback_data.action == "open":
         repo = LeadRepository(session)
         lead = await repo.get(callback_data.lead_id)
@@ -768,3 +859,110 @@ async def on_admin_lead_delete(
         screen=screen,
     )
     await callback.answer("🗑 Заявка удалена.")
+
+
+# ============= Search & period (Tier 2) =====================================
+
+
+async def _show_search_results(
+    *,
+    bot,
+    chat_id: int,
+    state: FSMContext,
+    content: ContentService,
+    session: AsyncSession,
+    query: str,
+    page: int,
+) -> None:
+    repo = LeadRepository(session)
+    page_size = content.config.ui.page_size_admin
+    leads = await repo.search(query=query, limit=page_size, offset=(page - 1) * page_size)
+    total = await repo.count_search(query=query)
+    # admin_filter holds only the query for search mode; pagination + back-renderer
+    # check af.get("query") to know we're in search mode.
+    await state.update_data(
+        admin_filter={
+            "query": query,
+            "label": f"🔎 Результаты: «{query}»",
+        }
+    )
+    await push(state, ADMIN_LEAD_LIST_SCREEN_ID)
+    stack = await get_stack(state)
+    screen = render_admin_lead_list(
+        content=content,
+        leads=leads,
+        page=page,
+        total=total,
+        page_size=page_size,
+        filter_label=f"🔎 Результаты: «{query}»",
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+
+
+@router.message(StateFilter(AdminFlowState.searching))
+async def on_admin_search_query(
+    message: Message,
+    state: FSMContext,
+    content: ContentService,
+    session: AsyncSession,
+    current_user,
+) -> None:
+    """Admin typed a search query — run it and render results as a list."""
+    settings = get_settings()
+    if not _is_admin_user(current_user, settings):
+        return
+    query = (message.text or "").strip()
+    if not query:
+        await message.answer("Запрос пуст — отправьте номер, @username или № заявки.")
+        return
+    if len(query) > 100:
+        await message.answer("Слишком длинный запрос. Сократите до 100 символов.")
+        return
+    await state.set_state(None)
+    # Leave the prompt screen behind so back from the results returns to admin_menu.
+    await pop(state)
+    await _show_search_results(
+        bot=message.bot,
+        chat_id=message.chat.id,
+        state=state,
+        content=content,
+        session=session,
+        query=query,
+        page=1,
+    )
+
+
+@router.callback_query(AdminPeriodCallback.filter())
+async def on_admin_period_pick(
+    callback: CallbackQuery,
+    callback_data: AdminPeriodCallback,
+    state: FSMContext,
+    content: ContentService,
+    session: AsyncSession,
+    current_user,
+) -> None:
+    settings = get_settings()
+    if not _is_admin_user(current_user, settings):
+        await callback.answer("Недостаточно прав.", show_alert=True)
+        return
+
+    # Persist the new period and bounce admin to a fresh "all leads" view filtered
+    # by that period. The previous status/hot filter is reset — period acts as a
+    # standalone slice, not a modifier on top of status.
+    new_period = callback_data.period
+    await pop(state)  # leave period_picker; next call will push admin_lead_list
+
+    await _show_lead_list(
+        bot=callback.bot,
+        chat_id=callback.message.chat.id,
+        state=state,
+        content=content,
+        session=session,
+        status=None,
+        hot=False,
+        period=new_period,
+        page=1,
+        filter_label="📋 Все заявки",
+    )
+    await callback.answer(f"📅 {period_label(new_period)}")

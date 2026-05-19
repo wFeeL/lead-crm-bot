@@ -19,9 +19,13 @@ def render_lead_done(*, content: ContentService, public_id: str) -> Screen:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
+                    text="📝 Ещё заявка",
+                    callback_data=MainMenuCallback(action="create_lead").pack(),
+                ),
+                InlineKeyboardButton(
                     text="📋 Мои заявки",
                     callback_data=MainMenuCallback(action="my_leads").pack(),
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(

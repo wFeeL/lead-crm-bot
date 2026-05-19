@@ -25,19 +25,16 @@ def render_admin_lead_delete_confirm(
         f"🗑 <b>Удалить заявку №{public_id}?</b>\n\n"
         "Заявка будет скрыта из всех списков (клиентских и админских) и помечена как удалённая. "
         "Данные сохраняются в БД для истории.\n\n"
-        "Это действие нельзя отменить из интерфейса."
+        "Это действие нельзя отменить из интерфейса.\n"
+        "Чтобы отменить — нажмите «⬅ Назад»."
     )
+    # Only the destructive action lives here; canceling is the nav-footer Back —
+    # avoids two visually-equivalent "back" buttons on one screen.
     extra = [
         [
             InlineKeyboardButton(
                 text="✅ Подтвердить удаление",
                 callback_data=AdminLeadDeleteCallback(action="confirm", lead_id=lead_id).pack(),
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="⬅ Отмена",
-                callback_data=AdminLeadDeleteCallback(action="cancel", lead_id=lead_id).pack(),
             )
         ],
     ]

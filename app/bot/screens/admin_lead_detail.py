@@ -11,13 +11,6 @@ from app.services.content import ContentService
 
 ADMIN_LEAD_DETAIL_SCREEN_ID = "admin_lead_detail"
 
-_PRIORITY_BUTTON_LABELS = {
-    "low": "Низкий",
-    "normal": "Обычный",
-    "high": "Высокий",
-    "urgent": "Срочно",
-}
-
 
 class AdminDetailCallback(CallbackData, prefix="adm_det"):
     action: Literal[
@@ -160,15 +153,19 @@ def render_admin_lead_detail(
     if close_row:
         extra.append(close_row)
 
-    # --- Priority row: labeled buttons, current marked with ✓. ---
+    # --- Priority row: labels come from the active profile's texts.yaml so
+    # different niches can rename labels (e.g. beauty_salon uses "Сегодня-завтра"
+    # for high instead of generic "Высокий"). Falls back to capitalised key
+    # if the YAML lacks a priority entry.
     prio_row: list[InlineKeyboardButton] = []
     for p in ("low", "normal", "high", "urgent"):
         meta = content.texts.priorities.get(p)
         emoji = meta.emoji if meta else ""
+        label = meta.label if meta else p.capitalize()
         mark = "✓ " if lead.priority == p else ""
         prio_row.append(
             InlineKeyboardButton(
-                text=f"{mark}{emoji} {_PRIORITY_BUTTON_LABELS[p]}".strip(),
+                text=f"{mark}{emoji} {label}".strip(),
                 callback_data=AdminDetailCallback(
                     action="set_priority", lead_id=lead.id, value=p
                 ).pack(),

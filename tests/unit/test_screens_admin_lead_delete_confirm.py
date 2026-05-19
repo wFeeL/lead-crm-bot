@@ -7,15 +7,20 @@ from app.bot.screens.admin_lead_delete_confirm import (
 STACK = ["admin_menu", "admin_lead_list", "admin_lead_detail", "admin_lead_delete_confirm"]
 
 
-def test_delete_confirm_renders_warning_and_buttons():
+def test_delete_confirm_renders_warning_and_confirm_button():
+    """Screen has the destructive button + nav-footer Back. Cancel = Back, not a duplicate."""
     screen = render_admin_lead_delete_confirm(public_id="TG-000042", lead_id=42, stack=STACK)
     assert screen.screen_id == ADMIN_LEAD_DELETE_CONFIRM_SCREEN_ID
     assert "TG-000042" in screen.text
     assert "Удалить" in screen.text
-    # Has both confirm + cancel callbacks.
     callbacks = [btn.callback_data for row in screen.keyboard.inline_keyboard for btn in row]
     assert any(cb.startswith("adm_del:confirm:42") for cb in callbacks)
-    assert any(cb.startswith("adm_del:cancel:42") for cb in callbacks)
+    # Cancel is provided by the universal nav-footer Back button.
+    from app.bot.ui.callbacks import NavCallback
+
+    assert NavCallback(action="back").pack() in callbacks
+    # No duplicate cancel-via-adm_del to avoid two visually-equivalent back buttons.
+    assert not any(cb.startswith("adm_del:cancel:") for cb in callbacks)
 
 
 def test_delete_callbacks_pack_with_lead_id():

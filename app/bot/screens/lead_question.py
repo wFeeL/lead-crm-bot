@@ -103,7 +103,7 @@ def render_lead_question(
             )
         )
     if can_skip:
-        skip_label = "↪ Пропустить и далее" if not has_answer else "↪ Очистить и далее"
+        skip_label = "↪ Пропустить" if not has_answer else "↪ Очистить"
         action_row.append(
             InlineKeyboardButton(
                 text=skip_label,

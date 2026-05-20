@@ -22,8 +22,8 @@ PeriodKey = Literal["today", "yesterday", "week", "month", "all"]
 PERIOD_LABELS: dict[str, str] = {
     "today": "Сегодня",
     "yesterday": "Вчера",
-    "week": "Последние 7 дней",
-    "month": "Последние 30 дней",
+    "week": "7 дней",
+    "month": "30 дней",
     "all": "Все время",
 }
 

@@ -22,6 +22,7 @@ class AdminDetailCallback(CallbackData, prefix="adm_det"):
         "assign_me",
         "delete",
         "timeline",
+        "show_files",
     ]
     lead_id: int
     value: str = ""  # For set_status / set_priority
@@ -74,33 +75,36 @@ def render_admin_lead_detail(
     client_text = " / ".join(client_parts) or "—"
     contact_text = lead.contact_phone or lead.contact_username or "—"
 
-    lines = [
-        f"<b>Заявка №{lead.public_id}</b>",
-        f"Статус: {s_emoji} {s_label}",
-        f"Приоритет: {p_emoji} {p_label}",
-        f"Категория: {category_title}",
-        f"Клиент: {client_text}",
-        f"Контакт: {contact_text}",
-        f"Назначен: {assigned_text}",
-        f"Создана: {lead.created_at.strftime('%Y-%m-%d %H:%M')}",
+    lines: list[str] = [
+        f"<b>📋 Заявка №{lead.public_id}</b>",
+        "",
+        f"{s_emoji} <b>Статус:</b> {s_label}",
+        f"{p_emoji} <b>Приоритет:</b> {p_label}",
+        f"📂 <b>Категория:</b> {category_title}",
+        f"👤 <b>Клиент:</b> {client_text}",
+        f"📞 <b>Контакт:</b> {contact_text}",
+        f"🙋 <b>Назначен:</b> {assigned_text}",
+        f"🕒 <b>Создана:</b> {lead.created_at.strftime('%d.%m.%Y %H:%M')}",
     ]
 
-    # Full Q&A block — show the human question text, not the English key.
+    # Q+A block — paired layout reads like a form, not a "key: value" dump.
     answers = list(getattr(lead, "answers", None) or [])
     if answers:
         lines.append("")
-        lines.append("<b>Ответы клиента:</b>")
+        lines.append("<b>📝 Ответы клиента:</b>")
         for answer in answers:
             value = (
                 getattr(answer, "value_text", None) or getattr(answer, "value_json", None) or "—"
             )
-            lines.append(f"• {_answer_label(answer)}: {value}")
+            lines.append("")
+            lines.append(f"<b>{_answer_label(answer)}</b>")
+            lines.append(f"  └ {value}")
 
-    # Files — show a list so admin can spot photos/docs at a glance.
+    # Files — short list, admin can hit "📎 Показать файлы" to actually view them.
     files = list(getattr(lead, "files", None) or [])
     if files:
         lines.append("")
-        lines.append(f"📎 <b>Файлов прикреплено: {len(files)}</b>")
+        lines.append(f"📎 <b>Прикреплённые файлы ({len(files)}):</b>")
         for i, f in enumerate(files):
             fname = getattr(f, "file_name", None)
             ftype = getattr(f, "file_type", "")
@@ -114,19 +118,18 @@ def render_admin_lead_detail(
                 label = f"Файл №{i + 1}"
             lines.append(f"• {label}")
 
-    # Internal admin comments stay visible to admins.
     comments = list(getattr(lead, "comments", None) or [])
     if comments:
         lines.append("")
-        lines.append("<b>Комментарии:</b>")
+        lines.append("<b>💬 Комментарии:</b>")
         for c in sorted(comments, key=lambda x: getattr(x, "id", 0) or 0):
             visibility = "внутренний" if c.is_internal else "клиенту"
             author = _admin_label(getattr(c, "admin", None))
-            lines.append(f"• {author} ({visibility}): {c.text}")
+            lines.append(f"• <i>{author}</i> ({visibility}): {c.text}")
 
     if lead.close_reason:
         lines.append("")
-        lines.append(f"💬 Причина закрытия: {lead.close_reason}")
+        lines.append(f"🔒 <b>Причина закрытия:</b> {lead.close_reason}")
 
     text = "\n".join(lines)
 
@@ -192,13 +195,13 @@ def render_admin_lead_detail(
     extra.append(
         [
             InlineKeyboardButton(
-                text="📝 Внутренний комментарий",
+                text="📝 Заметка",
                 callback_data=AdminDetailCallback(
                     action="comment_internal", lead_id=lead.id
                 ).pack(),
             ),
             InlineKeyboardButton(
-                text="💬 Ответить клиенту",
+                text="💬 Ответ клиенту",
                 callback_data=AdminDetailCallback(action="comment_reply", lead_id=lead.id).pack(),
             ),
         ]
@@ -221,15 +224,22 @@ def render_admin_lead_detail(
     )
     extra.append(assignment_row)
 
-    # --- Read-only audit log: opens the timeline screen with every LeadEvent.
-    extra.append(
-        [
+    # --- File preview + history pair (only shown when there's something to show).
+    info_row: list[InlineKeyboardButton] = []
+    if files:
+        info_row.append(
             InlineKeyboardButton(
-                text="📜 История",
-                callback_data=AdminDetailCallback(action="timeline", lead_id=lead.id).pack(),
+                text="📎 Показать файлы",
+                callback_data=AdminDetailCallback(action="show_files", lead_id=lead.id).pack(),
             )
-        ]
+        )
+    info_row.append(
+        InlineKeyboardButton(
+            text="📜 История",
+            callback_data=AdminDetailCallback(action="timeline", lead_id=lead.id).pack(),
+        )
     )
+    extra.append(info_row)
 
     # --- Danger zone: soft-delete on its own row, visually separated by the
     # 🗑 prefix from regular actions. Telegram has no real button colors, so

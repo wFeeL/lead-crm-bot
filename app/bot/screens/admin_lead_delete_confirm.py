@@ -33,7 +33,7 @@ def render_admin_lead_delete_confirm(
     extra = [
         [
             InlineKeyboardButton(
-                text="✅ Подтвердить удаление",
+                text="✅ Удалить",
                 callback_data=AdminLeadDeleteCallback(action="confirm", lead_id=lead_id).pack(),
             )
         ],

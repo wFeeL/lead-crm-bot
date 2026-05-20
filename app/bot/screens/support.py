@@ -30,7 +30,7 @@ def render_support(*, content: ContentService, stack: Sequence[str]) -> Screen:
     extra = [
         [
             InlineKeyboardButton(
-                text="✉️ Написать менеджеру",
+                text="✉ Написать сообщение",
                 callback_data=SupportCallback(action="write").pack(),
             )
         ]

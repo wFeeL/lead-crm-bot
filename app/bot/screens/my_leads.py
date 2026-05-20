@@ -123,26 +123,28 @@ def render_my_lead_detail(
     )
     category = getattr(lead.category, "title", "?") if getattr(lead, "category", None) else "?"
     lines: list[str] = [
-        f"<b>Заявка №{lead.public_id}</b>",
-        f"{emoji} Статус: {status_label}",
-        f"Категория: {category}",
+        f"<b>📋 Заявка №{lead.public_id}</b>",
+        "",
+        f"{emoji} <b>Статус:</b> {status_label}",
+        f"📂 <b>Категория:</b> {category}",
     ]
 
     created_at = getattr(lead, "created_at", None)
     if created_at is not None:
-        lines.append(f"Создана: {created_at.strftime('%Y-%m-%d %H:%M')}")
+        lines.append(f"🕒 <b>Создана:</b> {created_at.strftime('%d.%m.%Y %H:%M')}")
 
-    # Show the full Q&A block so the client can see what they answered, not
-    # just the concatenated description that looks like a wall of text.
+    # Q+A — paired layout so the client clearly sees what they submitted.
     answers = list(getattr(lead, "answers", None) or [])
     if answers:
         lines.append("")
-        lines.append("<b>Ваши ответы:</b>")
+        lines.append("<b>📝 Ваши ответы:</b>")
         for a in answers:
             value = getattr(a, "value_text", None) or "—"
-            lines.append(f"• {_answer_label(a)}: {value}")
+            lines.append("")
+            lines.append(f"<b>{_answer_label(a)}</b>")
+            lines.append(f"  └ {value}")
 
-    # Attached files — show as a list so the user knows what they sent.
+    # Attached files — short list so the user knows what they sent.
     files = list(getattr(lead, "files", None) or [])
     if files:
         lines.append("")
@@ -156,13 +158,13 @@ def render_my_lead_detail(
     public_comments = [c for c in comments if not c.is_internal]
     if public_comments:
         lines.append("")
-        lines.append("<b>Сообщения от менеджера:</b>")
+        lines.append("<b>💬 Сообщения от менеджера:</b>")
         for c in sorted(public_comments, key=lambda x: getattr(x, "id", 0) or 0):
             lines.append(f"• {c.text}")
 
     if getattr(lead, "close_reason", None):
         lines.append("")
-        lines.append(f"💬 Причина закрытия: {lead.close_reason}")
+        lines.append(f"🔒 <b>Причина закрытия:</b> {lead.close_reason}")
 
     text = "\n".join(lines)
 

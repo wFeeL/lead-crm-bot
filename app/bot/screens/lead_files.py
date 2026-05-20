@@ -44,7 +44,7 @@ def render_lead_upload_files(
         extra.append(
             [
                 InlineKeyboardButton(
-                    text="🗑 Удалить последний",
+                    text="🗑 Удалить файл",
                     callback_data=LeadFilesCallback(action="delete_last").pack(),
                 )
             ]

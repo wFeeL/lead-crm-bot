@@ -162,11 +162,14 @@ async def on_admin_menu_action(
         await push(state, ADMIN_SEARCH_PROMPT_SCREEN_ID)
         stack = await get_stack(state)
         screen = render_admin_search_prompt(stack=stack)
+        # Force-new: admin is being asked for input, the prompt must be the
+        # latest message in chat (see fix #5).
         await render_screen(
             bot=callback.bot,
             chat_id=callback.message.chat.id,
             state=state,
             screen=screen,
+            force_new=True,
         )
         await callback.answer()
         return
@@ -377,11 +380,14 @@ async def on_admin_detail_action(
                 target_status=target,
                 stack=stack,
             )
+            # Force-new: admin must visually see the close-reason prompt at
+            # the bottom of the chat (see fix #5).
             await render_screen(
                 bot=callback.bot,
                 chat_id=callback.message.chat.id,
                 state=state,
                 screen=screen,
+                force_new=True,
             )
             await callback.answer()
             return
@@ -451,11 +457,14 @@ async def on_admin_detail_action(
             is_internal=is_internal,
             stack=stack,
         )
+        # Force-new: admin types their comment next; the prompt must be
+        # visible at the bottom of chat (see fix #5).
         await render_screen(
             bot=callback.bot,
             chat_id=callback.message.chat.id,
             state=state,
             screen=screen,
+            force_new=True,
         )
         await callback.answer()
         return

@@ -93,11 +93,14 @@ async def handle_lead_detail_action(
         await push(state, MY_LEAD_CANCEL_REASON_SCREEN_ID)
         stack = await get_stack(state)
         screen = render_cancel_reason(content=content, lead_id=callback_data.lead_id, stack=stack)
+        # Force-new: client picks a reason or types one — the prompt must be
+        # the latest message they see (see fix #5).
         await render_screen(
             bot=callback.bot,
             chat_id=callback.message.chat.id,
             state=state,
             screen=screen,
+            force_new=True,
         )
         await callback.answer()
         return

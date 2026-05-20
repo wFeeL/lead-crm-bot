@@ -185,9 +185,10 @@ async def test_my_leads_cancel_lead_pushes_reason_screen(content, state, session
 
     # Callback acknowledged.
     callback.answer.assert_awaited()
-    # Cancel reason screen rendered (contains the "Отмена заявки" header).
-    callback.bot.edit_message_text.assert_awaited_once()
-    text = callback.bot.edit_message_text.await_args.kwargs["text"]
+    # Cancel-reason screen is sent as a NEW message (force_new=True for input
+    # prompts; see fix #5).
+    callback.bot.send_message.assert_awaited_once()
+    text = callback.bot.send_message.await_args.kwargs["text"]
     assert "Отмена заявки" in text
     # Lead is NOT yet cancelled — reason hasn't been selected.
     from app.db.repositories.leads import LeadRepository as _LR

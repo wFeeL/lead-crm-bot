@@ -37,6 +37,7 @@ from app.bot.screens.lead_question import (
     LEAD_QUESTION_SCREEN_ID,
     LeadQuestionBackCallback,
     LeadQuestionChoiceCallback,
+    LeadQuestionNextCallback,
     LeadQuestionSkipCallback,
     render_lead_question,
 )
@@ -204,13 +205,16 @@ async def on_pick_category(
         return
 
     questions = [_serialize_question(q) for q in form.questions]
+    # answers is a list aligned with questions by index. None = not yet
+    # answered. Allows the user to navigate freely via ⬅/➡ without losing
+    # earlier inputs.
     await state.update_data(
         category_id=category.id,
         category_title=category.title,
         category_slug=category.slug,
         questions=questions,
         question_index=0,
-        answers=[],
+        answers=[None] * len(questions),
         files=[],
     )
     await state.set_state(LeadFormState.answering_questions)
@@ -218,11 +222,24 @@ async def on_pick_category(
     await callback.answer()
 
 
-async def _render_current_question(bot, chat_id, state, content) -> None:
+async def _render_current_question(bot, chat_id, state, content, *, force_new: bool = True) -> None:
+    """Render the current question prompt.
+
+    Defaults to ``force_new=True`` so each navigation / answer submission sends
+    a fresh message — the previous prompt stays in chat history but the new
+    one always appears at the bottom, where the user is looking.
+    """
     data = await state.get_data()
     questions = data["questions"]
     index = data["question_index"]
     question = questions[index]
+    answers = data.get("answers") or []
+    current_payload = answers[index] if index < len(answers) else None
+    current_answer = (
+        current_payload.get("value_text")
+        if isinstance(current_payload, dict) and current_payload.get("value_text") is not None
+        else None
+    )
     await push(state, LEAD_QUESTION_SCREEN_ID)
     stack = await get_stack(state)
     screen = render_lead_question(
@@ -231,8 +248,9 @@ async def _render_current_question(bot, chat_id, state, content) -> None:
         index=index,
         total=len(questions),
         stack=stack,
+        current_answer=current_answer,
     )
-    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen, force_new=force_new)
 
 
 # ============= Step 2: collect answers (text + choice + skip + back) =============
@@ -331,43 +349,100 @@ async def on_back_question(
     content: ContentService,
     current_question: dict,
 ) -> None:
+    """Navigate to question index-1 WITHOUT mutating answers."""
     data = await state.get_data()
     index = data["question_index"]
-    answers = data.get("answers", [])
     if index <= 0:
         await callback.answer("Это первый вопрос.", show_alert=True)
         return
-    index -= 1
-    if answers:
-        answers.pop()
-    await state.update_data(answers=answers, question_index=index)
+    await state.update_data(question_index=index - 1)
     await _render_current_question(callback.bot, callback.message.chat.id, state, content)
     await callback.answer()
 
 
-async def _save_and_advance(
+@router.callback_query(
+    StateFilter(LeadFormState.answering_questions),
+    LeadQuestionNextCallback.filter(),
+)
+@validate_question_context
+async def on_next_question(
+    callback: CallbackQuery,
+    callback_data: LeadQuestionNextCallback,
+    state: FSMContext,
+    content: ContentService,
+    current_question: dict,
+) -> None:
+    """Navigate to the next question (or to upload-files if this was the last).
+
+    Refuses to advance from a REQUIRED question without an answer. For optional
+    questions, an empty/unanswered slot is allowed — the user simply skipped it.
+    """
+    data = await state.get_data()
+    index = data["question_index"]
+    answers = list(data.get("answers") or [])
+    current = answers[index] if index < len(answers) else None
+    has_answer = (
+        isinstance(current, dict)
+        and current.get("value_text") is not None
+        and current.get("value_text") != ""
+    )
+    if current_question["required"] and not has_answer:
+        await callback.answer(
+            "Это обязательный вопрос — введите ответ или выберите вариант.",
+            show_alert=True,
+        )
+        return
+    # For optional unanswered slots, mark them as "explicitly skipped" so the
+    # answer list has a row for the question (with empty value).
+    if current is None:
+        question = current_question
+        answers[index] = {
+            "question_id": question["id"],
+            "key": question["key"],
+            "question_text": question["text"],
+            "value_text": "",
+        }
+        await state.update_data(answers=answers)
+    await _advance_or_finish(
+        bot=callback.bot,
+        chat_id=callback.message.chat.id,
+        state=state,
+        content=content,
+    )
+    await callback.answer()
+
+
+async def _save_answer(state: FSMContext, *, value_text: str) -> None:
+    """Write the value at the current question_index. Pads with None if shorter."""
+    data = await state.get_data()
+    questions = data["questions"]
+    index = data["question_index"]
+    question = questions[index]
+    answers = list(data.get("answers") or [])
+    # Ensure list is long enough; pad with None for any visited-but-not-answered
+    # slots between current len and `index`.
+    while len(answers) <= index:
+        answers.append(None)
+    answers[index] = {
+        "question_id": question["id"],
+        "key": question["key"],
+        "question_text": question["text"],
+        "value_text": value_text,
+    }
+    await state.update_data(answers=answers)
+
+
+async def _advance_or_finish(
     *,
     bot,
     chat_id: int,
     state: FSMContext,
     content: ContentService,
-    value_text: str,
 ) -> None:
+    """Advance question_index; if past the last one, transition to file upload."""
     data = await state.get_data()
     questions = data["questions"]
-    index = data["question_index"]
-    question = questions[index]
-    answers = data.get("answers", [])
-    answers.append(
-        {
-            "question_id": question["id"],
-            "key": question["key"],
-            "question_text": question["text"],
-            "value_text": value_text,
-        }
-    )
-    index += 1
-    await state.update_data(answers=answers, question_index=index)
+    index = data["question_index"] + 1
     if index >= len(questions):
         await state.set_state(LeadFormState.uploading_files)
         await push(state, LEAD_UPLOAD_FILES_SCREEN_ID)
@@ -379,9 +454,25 @@ async def _save_and_advance(
             max_files=get_settings().max_files_per_lead,
             stack=stack,
         )
-        await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
+        # Re-send as a fresh message — the user is being asked for input, so
+        # the prompt must land at the bottom of the chat.
+        await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen, force_new=True)
     else:
+        await state.update_data(question_index=index)
         await _render_current_question(bot, chat_id, state, content)
+
+
+async def _save_and_advance(
+    *,
+    bot,
+    chat_id: int,
+    state: FSMContext,
+    content: ContentService,
+    value_text: str,
+) -> None:
+    """Save the answer at the current index, then advance to the next question."""
+    await _save_answer(state, value_text=value_text)
+    await _advance_or_finish(bot=bot, chat_id=chat_id, state=state, content=content)
 
 
 # ============= Step 3: file upload =============
@@ -414,7 +505,11 @@ async def on_file_received(
         max_files=settings.max_files_per_lead,
         stack=stack,
     )
-    await render_screen(bot=message.bot, chat_id=message.chat.id, state=state, screen=screen)
+    # Re-send so the upload prompt is always the last message in chat — the
+    # user can immediately see the updated file count + send the next file.
+    await render_screen(
+        bot=message.bot, chat_id=message.chat.id, state=state, screen=screen, force_new=True
+    )
 
 
 @router.callback_query(
@@ -448,14 +543,13 @@ async def on_files_action(
                 screen=screen,
             )
     elif callback_data.action == "back_to_questions":
-        # Go back to last answered question.
-        answers = data.get("answers", [])
-        if answers:
-            answers.pop()
-            await state.update_data(answers=answers, question_index=len(answers))
+        # Return to the LAST question of the wizard with answers preserved —
+        # the user can navigate via ⬅/➡ as usual.
+        questions = data.get("questions") or []
+        last_index = max(0, len(questions) - 1)
+        await state.update_data(question_index=last_index)
         await state.set_state(LeadFormState.answering_questions)
-        # Pop the upload-files screen from stack.
-        await pop(state)
+        await pop(state)  # leave upload-files screen
         await _render_current_question(
             callback.bot,
             callback.message.chat.id,
@@ -463,7 +557,8 @@ async def on_files_action(
             content,
         )
     elif callback_data.action == "continue":
-        # Move to contact prompt.
+        # Move to contact prompt. Re-send as a fresh message — the user is
+        # about to provide input, so the prompt must be at the bottom.
         await state.set_state(LeadFormState.entering_contact)
         await push(state, LEAD_CONTACT_PROMPT_SCREEN_ID)
         stack = await get_stack(state)
@@ -473,6 +568,7 @@ async def on_files_action(
             chat_id=callback.message.chat.id,
             state=state,
             screen=screen,
+            force_new=True,
         )
         # Send the contact reply-keyboard as a separate prompt.
         await callback.bot.send_message(
@@ -592,7 +688,9 @@ async def _submit_lead(callback, state, session, current_user, content):
             key=item["key"],
             value_text=item.get("value_text"),
         )
-        for item in data.get("answers", [])
+        # Skip placeholder Nones (unanswered slots from free navigation).
+        for item in (data.get("answers") or [])
+        if isinstance(item, dict) and item.get("question_id")
     ]
     files = [LeadFileInput(**item) for item in data.get("files", [])]
     description = "\n".join(item.value_text or "" for item in answers if item.value_text).strip()
@@ -682,18 +780,28 @@ async def on_edit_answers_action(
     await state.update_data(editing_index=index, question_index=index)
     await state.set_state(LeadFormState.editing_one_answer)
     stack = await get_stack(state)
+    current_payload = answers[index] if index < len(answers) else None
+    current_answer = (
+        current_payload.get("value_text")
+        if isinstance(current_payload, dict) and current_payload.get("value_text") is not None
+        else None
+    )
     screen = render_lead_question(
         content=content,
         question=questions[index],
         index=index,
         total=len(questions),
         stack=stack,
+        current_answer=current_answer,
     )
+    # Force-new: user is being prompted for a new answer; the prompt must be
+    # the latest message in chat (see fix #5).
     await render_screen(
         bot=callback.bot,
         chat_id=callback.message.chat.id,
         state=state,
         screen=screen,
+        force_new=True,
     )
     await callback.answer()
 

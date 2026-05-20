@@ -4,6 +4,7 @@ from app.bot.screens.lead_question import (
     LEAD_QUESTION_SCREEN_ID,
     LeadQuestionBackCallback,
     LeadQuestionChoiceCallback,
+    LeadQuestionNextCallback,
     LeadQuestionSkipCallback,
     render_lead_question,
 )
@@ -99,3 +100,47 @@ def test_callbacks_pack_with_correct_prefixes():
     assert LeadQuestionChoiceCallback(question_id=1, option_index=0).pack().startswith("lq_choice:")
     assert LeadQuestionSkipCallback(question_id=1).pack().startswith("lq_skip:")
     assert LeadQuestionBackCallback(question_id=1).pack().startswith("lq_back:")
+    assert LeadQuestionNextCallback(question_id=1).pack().startswith("lq_next:")
+
+
+def test_next_button_always_visible():
+    """Next must always be present; handler refuses for required-unanswered."""
+    q = _q(required=True)
+    screen = render_lead_question(
+        content=_content(),
+        question=q,
+        index=0,
+        total=3,
+        stack=["main_menu", "lead_category", "lead_question"],
+    )
+    callbacks = [b.callback_data for row in screen.keyboard.inline_keyboard for b in row]
+    assert any(cb.startswith("lq_next:") for cb in callbacks)
+
+
+def test_last_question_next_label_says_files():
+    """On the final question the Next button hands off to file upload."""
+    q = _q(required=False)
+    screen = render_lead_question(
+        content=_content(),
+        question=q,
+        index=2,
+        total=3,
+        stack=["main_menu", "lead_category", "lead_question"],
+    )
+    labels = [b.text for row in screen.keyboard.inline_keyboard for b in row]
+    assert any("файлам" in lbl.lower() for lbl in labels)
+
+
+def test_current_answer_displayed_when_provided():
+    """When the user navigates back to an answered question, show what they wrote."""
+    q = _q(required=True)
+    screen = render_lead_question(
+        content=_content(),
+        question=q,
+        index=0,
+        total=3,
+        stack=["main_menu", "lead_category", "lead_question"],
+        current_answer="мой прошлый ответ",
+    )
+    assert "мой прошлый ответ" in screen.text
+    assert "перезапишет" in screen.text  # hint about overwriting

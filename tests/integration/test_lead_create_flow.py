@@ -122,7 +122,9 @@ async def test_pick_category_loads_questions(content, state, session, current_us
     assert data["category_slug"] == "telegram_bot"
     assert len(data["questions"]) > 0
     assert data["question_index"] == 0
-    assert data["answers"] == []
+    # answers is initialised as a list of Nones aligned with questions so the
+    # user can navigate freely between them.
+    assert data["answers"] == [None] * len(data["questions"])
 
 
 # ---------------------------------------------------------------------------
@@ -147,8 +149,12 @@ async def test_text_answer_advances_to_next_question(content, state, session, cu
 
     data = await state.get_data()
     assert data["question_index"] == 1
-    assert len(data["answers"]) == 1
+    # answers is now a fixed-length list aligned with questions; index 0 holds
+    # the submitted answer, later slots are None until visited.
     assert data["answers"][0]["value_text"] == "Сделать бота для заявок"
+    assert data["answers"][1] is None  # not yet visited
+    answered = [a for a in data["answers"] if a is not None]
+    assert len(answered) == 1
 
 
 # ---------------------------------------------------------------------------

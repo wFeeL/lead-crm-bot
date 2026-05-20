@@ -253,8 +253,9 @@ async def test_full_user_journey_create_to_my_leads(content, session: AsyncSessi
         current_user=user,
     )
     cb2.answer.assert_awaited()
-    # Cancel-reason screen rendered.
-    cb2.bot.edit_message_text.assert_awaited()
+    # Cancel-reason screen is sent fresh (force_new=True for input prompts;
+    # see fix #5 in the audit).
+    cb2.bot.send_message.assert_awaited()
 
     # Pick reason index 0.
     from app.bot.routers.user.my_leads import handle_cancel_reason

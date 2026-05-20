@@ -109,9 +109,10 @@ async def test_cancel_action_pushes_reason_screen(
     )
 
     callback.answer.assert_awaited()
-    # Reason screen rendered.
-    callback.bot.edit_message_text.assert_awaited_once()
-    text = callback.bot.edit_message_text.await_args.kwargs["text"]
+    # Reason screen rendered as a NEW message (force_new=True for input prompts —
+    # see fix #5: every prompt for user input is re-sent fresh).
+    callback.bot.send_message.assert_awaited_once()
+    text = callback.bot.send_message.await_args.kwargs["text"]
     assert "Отмена заявки" in text
 
     # Lead still NEW.

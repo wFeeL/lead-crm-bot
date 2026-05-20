@@ -13,7 +13,9 @@ clients. Switch niche by editing YAML — no Python changes required.
 - **Admin panel inside the bot.** Filters, statuses (8), priorities (4),
   comments (internal & to client), reassignment, soft-delete, CSV, daily stats.
 - **Robust by default.** Rate limiting, FSM defenses, escape commands,
-  PostgreSQL migrations (5), 389 tests passing, ruff-clean.
+  PostgreSQL migrations (5), 401 tests passing, ruff-clean.
+- **Outbound integrations included.** Signed JSON webhooks (CRM / Zapier /
+  Make.com) and SMTP email — flip env vars to enable, no Python edits.
 
 ## Stack
 
@@ -122,7 +124,7 @@ backups.
 
 ```bash
 make help              # list every target
-make test              # run 389 tests
+make test              # run 401 tests
 make lint              # ruff check + format --check
 make fix               # auto-fix ruff issues + reformat
 make migrate           # alembic upgrade head

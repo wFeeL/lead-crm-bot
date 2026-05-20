@@ -135,7 +135,7 @@ the DB for audit.
   SQLAlchemy session (SQLite for speed, but model code is dialect-agnostic
   so PG passes too — verified by `make prod-up`).
 
-Run `make test` — 389 tests, ~6 seconds.
+Run `make test` — 401 tests, ~6 seconds.
 
 ## File-loading order at startup
 

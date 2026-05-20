@@ -13,9 +13,15 @@ def nav_footer(
     """Build keyboard rows with the nav row at the bottom.
 
     Stack-aware:
-    - len(stack) == 0: only Cancel (no prior screen, no root).
-    - len(stack) == 1: Home + Cancel (already at root, no Back).
-    - len(stack) >= 2: Back + Home + Cancel.
+    - len(stack) == 0: only Home (we have nothing else to offer).
+    - len(stack) == 1: Home (already at root, no Back).
+    - len(stack) >= 2: Back + Home.
+
+    "Cancel" used to be a separate button here, but it was visually identical
+    to Back for the user and confused testers ("Why two backs?"). We dropped it
+    from the inline keyboard; ``/cancel`` typed as a command still clears the
+    FSM and returns to MAIN_MENU via EscapeMiddleware, so the safety hatch
+    isn't gone — just hidden from the visual UI.
     """
     rows: list[list[InlineKeyboardButton]] = []
     if extra:
@@ -26,12 +32,8 @@ def nav_footer(
         nav_row.append(
             InlineKeyboardButton(text="⬅ Назад", callback_data=NavCallback(action="back").pack())
         )
-    if len(stack) >= 1:
-        nav_row.append(
-            InlineKeyboardButton(text="🏠 Меню", callback_data=NavCallback(action="home").pack())
-        )
     nav_row.append(
-        InlineKeyboardButton(text="🚫 Отмена", callback_data=NavCallback(action="cancel").pack())
+        InlineKeyboardButton(text="🏠 Меню", callback_data=NavCallback(action="home").pack())
     )
     rows.append(nav_row)
     return rows

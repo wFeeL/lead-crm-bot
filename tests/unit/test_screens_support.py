@@ -31,13 +31,15 @@ def test_render_support_has_write_button():
     assert any("Написать" in lbl for lbl in labels)
 
 
-def test_render_support_writing_has_nav_footer_with_cancel():
+def test_render_support_writing_has_nav_footer():
+    """Writing screen exposes Back+Home so the user can bail out cleanly."""
     screen = render_support_writing(
         content=_content(), stack=["main_menu", "support", "support_writing"]
     )
     assert screen.screen_id == SUPPORT_WRITING_SCREEN_ID
     labels = [btn.text for row in screen.keyboard.inline_keyboard for btn in row]
-    assert any("Отмена" in lbl for lbl in labels)
+    assert any("Назад" in lbl for lbl in labels)
+    assert any("Меню" in lbl for lbl in labels)
 
 
 def test_render_support_writing_sets_next_state():

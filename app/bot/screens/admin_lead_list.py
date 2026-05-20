@@ -30,12 +30,14 @@ def render_admin_lead_list(
     stack: Sequence[str],
 ) -> Screen:
     total_pages = max(1, ceil(total / page_size))
+    # filter_label already carries its own emoji (e.g. "🆕 Новые", "📋 Все заявки",
+    # "🔥 Срочные"), so we do NOT prepend another one here.
     if total == 0:
-        text = f"📋 {filter_label}\n\nНичего не найдено."
+        text = f"<b>{filter_label}</b>\n\nНичего не найдено."
         keyboard = InlineKeyboardMarkup(inline_keyboard=nav_footer(stack=stack))
         return Screen(screen_id=ADMIN_LEAD_LIST_SCREEN_ID, text=text, keyboard=keyboard)
 
-    text = f"📋 <b>{filter_label}</b> (всего {total}):"
+    text = f"<b>{filter_label}</b> (всего {total}):"
     extra = []
     for lead in leads:
         status_emoji = (

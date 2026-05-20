@@ -89,6 +89,26 @@ def render_my_leads(
     return Screen(screen_id=MY_LEADS_SCREEN_ID, text=text, keyboard=keyboard)
 
 
+def _answer_label(answer: Any) -> str:
+    """Prefer the question text shown to the client; fall back to the key."""
+    question = getattr(answer, "question", None)
+    question_text = getattr(question, "question_text", None) if question else None
+    return question_text or getattr(answer, "key", "—")
+
+
+def _file_display_name(file: Any, index: int) -> str:
+    """Human label for a single attached file."""
+    name = getattr(file, "file_name", None)
+    if name:
+        return name
+    ftype = getattr(file, "file_type", None)
+    if ftype == "photo":
+        return f"Фото №{index + 1}"
+    if ftype == "document":
+        return f"Документ №{index + 1}"
+    return f"Файл №{index + 1}"
+
+
 def render_my_lead_detail(
     *,
     content: ContentService,
@@ -102,15 +122,49 @@ def render_my_lead_detail(
         else lead.status
     )
     category = getattr(lead.category, "title", "?") if getattr(lead, "category", None) else "?"
-    text_lines = [
+    lines: list[str] = [
         f"<b>Заявка №{lead.public_id}</b>",
         f"{emoji} Статус: {status_label}",
         f"Категория: {category}",
-        "",
     ]
-    if getattr(lead, "description", None):
-        text_lines.append(lead.description)
-    text = "\n".join(text_lines)
+
+    created_at = getattr(lead, "created_at", None)
+    if created_at is not None:
+        lines.append(f"Создана: {created_at.strftime('%Y-%m-%d %H:%M')}")
+
+    # Show the full Q&A block so the client can see what they answered, not
+    # just the concatenated description that looks like a wall of text.
+    answers = list(getattr(lead, "answers", None) or [])
+    if answers:
+        lines.append("")
+        lines.append("<b>Ваши ответы:</b>")
+        for a in answers:
+            value = getattr(a, "value_text", None) or "—"
+            lines.append(f"• {_answer_label(a)}: {value}")
+
+    # Attached files — show as a list so the user knows what they sent.
+    files = list(getattr(lead, "files", None) or [])
+    if files:
+        lines.append("")
+        lines.append(f"📎 <b>Прикреплённые файлы ({len(files)}):</b>")
+        for i, f in enumerate(files):
+            lines.append(f"• {_file_display_name(f, i)}")
+
+    # Public comments (replies from the admin to the client). Internal comments
+    # MUST NOT leak into the client view.
+    comments = list(getattr(lead, "comments", None) or [])
+    public_comments = [c for c in comments if not c.is_internal]
+    if public_comments:
+        lines.append("")
+        lines.append("<b>Сообщения от менеджера:</b>")
+        for c in sorted(public_comments, key=lambda x: getattr(x, "id", 0) or 0):
+            lines.append(f"• {c.text}")
+
+    if getattr(lead, "close_reason", None):
+        lines.append("")
+        lines.append(f"💬 Причина закрытия: {lead.close_reason}")
+
+    text = "\n".join(lines)
 
     extra: list[list[InlineKeyboardButton]] = []
     if lead.status not in ("rejected", "cancelled"):

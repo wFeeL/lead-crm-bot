@@ -96,11 +96,23 @@ def render_admin_lead_detail(
             )
             lines.append(f"• {_answer_label(answer)}: {value}")
 
-    # Files counter (useful for admin triage).
+    # Files — show a list so admin can spot photos/docs at a glance.
     files = list(getattr(lead, "files", None) or [])
     if files:
         lines.append("")
-        lines.append(f"📎 Файлов: {len(files)}")
+        lines.append(f"📎 <b>Файлов прикреплено: {len(files)}</b>")
+        for i, f in enumerate(files):
+            fname = getattr(f, "file_name", None)
+            ftype = getattr(f, "file_type", "")
+            if fname:
+                label = fname
+            elif ftype == "photo":
+                label = f"Фото №{i + 1}"
+            elif ftype == "document":
+                label = f"Документ №{i + 1}"
+            else:
+                label = f"Файл №{i + 1}"
+            lines.append(f"• {label}")
 
     # Internal admin comments stay visible to admins.
     comments = list(getattr(lead, "comments", None) or [])

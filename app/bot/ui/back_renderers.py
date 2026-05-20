@@ -75,8 +75,7 @@ from app.bot.screens.lead_confirm import (
 )
 from app.bot.screens.lead_contact import (
     LEAD_CONTACT_PROMPT_SCREEN_ID,
-    make_contact_reply_keyboard,
-    render_lead_contact_prompt,
+    send_contact_prompt,
 )
 from app.bot.screens.lead_edit_answers import (
     LEAD_EDIT_ANSWERS_SCREEN_ID,
@@ -459,15 +458,7 @@ async def _back_lead_contact_prompt(
     *, bot, chat_id: int, state: FSMContext, session: AsyncSession, content, current_user
 ) -> None:
     await state.set_state(LeadFormState.entering_contact)
-    stack = await get_stack(state)
-    screen = render_lead_contact_prompt(content=content, stack=stack)
-    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen)
-    # Re-send the reply-keyboard so the user can tap "Send phone" again.
-    await bot.send_message(
-        chat_id=chat_id,
-        text="📞 Нажмите кнопку, чтобы поделиться телефоном, или напишите контакт текстом.",
-        reply_markup=make_contact_reply_keyboard(),
-    )
+    await send_contact_prompt(bot=bot, chat_id=chat_id, state=state)
 
 
 async def _back_lead_edit_answers(

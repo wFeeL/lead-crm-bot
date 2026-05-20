@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 from uuid import uuid4
 
@@ -19,8 +20,7 @@ from app.bot.screens.lead_confirm import (
 )
 from app.bot.screens.lead_contact import (
     LEAD_CONTACT_PROMPT_SCREEN_ID,
-    make_contact_reply_keyboard,
-    render_lead_contact_prompt,
+    send_contact_prompt,
 )
 from app.bot.screens.lead_done import render_lead_done
 from app.bot.screens.lead_edit_answers import (
@@ -478,6 +478,59 @@ async def _save_and_advance(
 # ============= Step 3: file upload =============
 
 
+# Pending upload-screen re-renders, keyed by chat_id. When the user sends a
+# Telegram media album, all photos arrive in rapid succession with the same
+# media_group_id; rendering for each one would spam the chat (and waste API
+# calls). Instead, every incoming file cancels the previous scheduled render
+# and schedules a fresh one ~700ms later — so only the last file in the
+# album triggers a visible update.
+_FILE_RENDER_DEBOUNCE_SECONDS = 0.7
+_pending_file_renders: dict[int, asyncio.Task] = {}
+
+
+async def _render_files_screen_now(
+    *, bot, chat_id: int, state: FSMContext, content: ContentService
+) -> None:
+    data = await state.get_data()
+    files = data.get("files", [])
+    settings = get_settings()
+    stack = await get_stack(state)
+    screen = render_lead_upload_files(
+        content=content,
+        files=files,
+        max_files=settings.max_files_per_lead,
+        stack=stack,
+    )
+    await render_screen(bot=bot, chat_id=chat_id, state=state, screen=screen, force_new=True)
+
+
+def _schedule_files_render(
+    *, bot, chat_id: int, state: FSMContext, content: ContentService
+) -> None:
+    """Cancel any pending render for this chat and reschedule.
+
+    Last file in an album wins — we render once, not N times.
+    """
+    prev = _pending_file_renders.pop(chat_id, None)
+    if prev is not None and not prev.done():
+        prev.cancel()
+
+    async def _delayed() -> None:
+        try:
+            await asyncio.sleep(_FILE_RENDER_DEBOUNCE_SECONDS)
+            await _render_files_screen_now(bot=bot, chat_id=chat_id, state=state, content=content)
+        except asyncio.CancelledError:
+            return
+        finally:
+            # Only clear the dict if we're still the registered task — a
+            # concurrent schedule call may have already replaced us, in which
+            # case popping would orphan the new task.
+            if _pending_file_renders.get(chat_id) is asyncio.current_task():
+                _pending_file_renders.pop(chat_id, None)
+
+    _pending_file_renders[chat_id] = asyncio.create_task(_delayed())
+
+
 @router.message(StateFilter(LeadFormState.uploading_files), F.photo | F.document)
 async def on_file_received(
     message: Message,
@@ -498,18 +551,8 @@ async def on_file_received(
         return
     files.append(file_data)
     await state.update_data(files=files)
-    stack = await get_stack(state)
-    screen = render_lead_upload_files(
-        content=content,
-        files=files,
-        max_files=settings.max_files_per_lead,
-        stack=stack,
-    )
-    # Re-send so the upload prompt is always the last message in chat — the
-    # user can immediately see the updated file count + send the next file.
-    await render_screen(
-        bot=message.bot, chat_id=message.chat.id, state=state, screen=screen, force_new=True
-    )
+    # Debounce the screen re-render: media-album files arrive in a burst.
+    _schedule_files_render(bot=message.bot, chat_id=message.chat.id, state=state, content=content)
 
 
 @router.callback_query(
@@ -557,25 +600,11 @@ async def on_files_action(
             content,
         )
     elif callback_data.action == "continue":
-        # Move to contact prompt. Re-send as a fresh message — the user is
-        # about to provide input, so the prompt must be at the bottom.
+        # Single-message contact prompt: text + reply-keyboard with the
+        # request_contact button. Avoids the two-message spam we used to ship.
         await state.set_state(LeadFormState.entering_contact)
         await push(state, LEAD_CONTACT_PROMPT_SCREEN_ID)
-        stack = await get_stack(state)
-        screen = render_lead_contact_prompt(content=content, stack=stack)
-        await render_screen(
-            bot=callback.bot,
-            chat_id=callback.message.chat.id,
-            state=state,
-            screen=screen,
-            force_new=True,
-        )
-        # Send the contact reply-keyboard as a separate prompt.
-        await callback.bot.send_message(
-            chat_id=callback.message.chat.id,
-            text="📞 Нажмите кнопку, чтобы поделиться телефоном, или напишите контакт текстом.",
-            reply_markup=make_contact_reply_keyboard(),
-        )
+        await send_contact_prompt(bot=callback.bot, chat_id=callback.message.chat.id, state=state)
     await callback.answer()
 
 

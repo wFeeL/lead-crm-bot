@@ -490,6 +490,43 @@ async def on_admin_detail_action(
         await callback.answer("Назначено на вас.")
         return
 
+    if callback_data.action == "show_files":
+        from aiogram.types import InputMediaDocument, InputMediaPhoto
+
+        lead = await repo.get(callback_data.lead_id)
+        if lead is None:
+            await callback.answer("Не найдено.", show_alert=True)
+            return
+        files = list(lead.files or [])
+        if not files:
+            await callback.answer("К этой заявке файлов не прикреплено.", show_alert=True)
+            return
+
+        # Build media groups: Telegram allows up to 10 items per media group,
+        # photo and document can be mixed. Split into chunks of 10.
+        chunk_size = 10
+        delivered = 0
+        for chunk_start in range(0, len(files), chunk_size):
+            chunk = files[chunk_start : chunk_start + chunk_size]
+            media: list = []
+            for f in chunk:
+                caption = None
+                if chunk_start == 0 and not media:
+                    caption = f"📎 Файлы заявки №{lead.public_id}"
+                if f.file_type == "photo":
+                    media.append(InputMediaPhoto(media=f.telegram_file_id, caption=caption))
+                else:  # document (fallback for unknown types too)
+                    media.append(InputMediaDocument(media=f.telegram_file_id, caption=caption))
+            try:
+                await callback.bot.send_media_group(chat_id=callback.message.chat.id, media=media)
+                delivered += len(chunk)
+            except Exception as exc:  # noqa: BLE001 — non-fatal; tell admin and continue
+                await callback.message.answer(f"⚠️ Не удалось отправить часть файлов: {exc}")
+                break
+
+        await callback.answer(f"Отправлено файлов: {delivered}.")
+        return
+
     if callback_data.action == "timeline":
         lead = await repo.get(callback_data.lead_id)
         if lead is None:

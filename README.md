@@ -1,6 +1,6 @@
 # Lead Bot Template
 
-[![CI](https://github.com/wFeeL/lead_management_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/wFeeL/lead_management_bot/actions/workflows/ci.yml)
+[![CI](https://github.com/wFeeL/lead-crm-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/wFeeL/lead-crm-bot/actions/workflows/ci.yml)
 
 **Production-ready Telegram lead-management bot** — collect leads, manage them in
 an admin panel, export to CSV. Built as a **resale template**: one codebase, many
